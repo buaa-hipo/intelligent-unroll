@@ -67,18 +67,20 @@ typedef int(*FP)(DATATYPE *,DATATYPE*);
 #define CHECK(x) if(!(x)) \
             llvm::outs() << "CHECK failed:"#x << " "
 #define PRINTINT(x) do {    \
-                    printf( #x" %d\n" , (x)); \
+                    printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
 //using namespace llvm;
     void print_fvec( DATATYPE * ptr , const int num ) {
         for( int i = 0 ; i < num ; i++)
             printf("%f ",ptr[i]);
         printf("\n");
+        fflush(stdout);
     }
     void print_vec( int * ptr , const int num ) {
         for( int i = 0 ; i < num ; i++)
             printf("%d ",ptr[i]);
         printf("\n");
+        fflush(stdout);
     }
 #define PRINTINTVEC( x,len)  do{\
     printf(#x" "#len" \n");\
@@ -137,6 +139,7 @@ class CSR5JIT {
     llvm::Value * y_vec_ptr_;
     llvm::Value * x_ptr_vec_;
     llvm::Value * y_ptr_vec_;
+    int row_num_;
     char *error_;
     public:
     llvm::Module * get_mod_ptr() {
@@ -413,9 +416,9 @@ class CSR5JIT {
         int * empty_offset_;
         bool is_empty_;
     } tile_dec;
-    tile_dec generate_tile_dec(const int * row_ptr_base, const int begin_loc, int & tile_row_index) {
+    tile_dec generate_tile_dec(const int * row_ptr, const int begin_loc, int & tile_row_index) {
         tile_dec info;
-        const int * row_ptr = &row_ptr_base[tile_row_index];
+//        const int * row_ptr = &row_ptr_base[tile_row_index];
         for( int i = 0 ; i < OMEGA ; i++ ) {
 //            for( int j = 0 ; j < DELTA ; j++) {
                 info.bit_flag_[i] = 0;
@@ -424,34 +427,50 @@ class CSR5JIT {
         for( int j = 0 ; j < DELTA ; j++ ) {
             info.y_offset_[j] = 0;
         }
-        info.bit_flag_[0] = 1;
-        int row_index = 0;
         int temp_y_offset[DELTA];
         for( int j = 0 ; j < DELTA ; j++ ) {
             temp_y_offset[j] = 0 ;
         }
+
+        info.bit_flag_[0] = 1;
+        temp_y_offset[0] ++;
+        int row_index = 0;
         bool is_empty = false;
         int distance;
-        while( row_ptr[row_index] == row_ptr[row_index + 1]) {row_index++;}
-        distance = row_ptr[row_index] - begin_loc;
-        std::vector<int> empty_offset_vec;
-        while(distance < OMEGA * DELTA ) {
-//            info.bit_flag_[ distance / OMEGA + (distance % OMEGA) * DELTA ] = 1;
+        while( row_index + 1 + tile_row_index < row_num_ && row_ptr[row_index] == row_ptr[row_index + 1]) {row_index++;}
+        
+        distance = row_ptr[row_index+1] - begin_loc;
 
+        std::vector<int> empty_offset_vec;
+        CHECK(distance > 0) << "Erro\n";
+        
+        while( distance < OMEGA * DELTA ) {
+//            info.bit_flag_[ distance / OMEGA + (distance % OMEGA) * DELTA ] = 1;
+            PRINTINT(distance);
             info.bit_flag_[ distance % OMEGA ] |= 1 << ( distance / OMEGA);
             temp_y_offset[ distance / OMEGA ] ++;
 
             empty_offset_vec.push_back(row_index);
             row_index++;
-            while( row_ptr[row_index] == row_ptr[row_index+1] ) {
+
+            PRINTINT( row_index + tile_row_index );
+
+            PRINTINT( row_num_ );
+            if(row_index + tile_row_index >= row_num_ ) {
+
+                PRINTINT( row_index + tile_row_index );
+                break;
+            }
+            while(row_index + 1 + tile_row_index < row_num_ &&  row_ptr[row_index] == row_ptr[row_index+1] ) {
                 row_index++;
                 is_empty = true;
             }
-
-            distance = row_ptr[row_index] - begin_loc;
+            
+            distance = row_ptr[row_index+1] - begin_loc;
         }
-        if(distance != OMEGA * DELTA)
-            row_index--;
+        PRINTINT( row_index );
+//        if(distance != OMEGA * DELTA)
+//            row_index--;
         info.is_empty_ = is_empty;
         if(is_empty) {
             int empty_size = empty_offset_vec.size();
@@ -474,8 +493,8 @@ class CSR5JIT {
 
         int ret_row_index = row_index;
         const int tile_row_index = row_index;
-        const int * tile_column_ptr = &column_ptr[begin_loc];
-        const DATATYPE * tile_data_ptr = &data_ptr[begin_loc];
+        const int * tile_column_ptr = column_ptr;
+        const DATATYPE * tile_data_ptr = data_ptr;
         //DATATYPE * tile_y_ptr = y_ptr + begin_loc;
 
         tile_dec ret_tile_dec = generate_tile_dec( row_ptr, begin_loc,ret_row_index);
@@ -490,6 +509,7 @@ class CSR5JIT {
                data_tran[j*lanes_ + i] =  tile_data_ptr[j + i * omega_];
             }
         }
+
         llvm::Value * index = InitVector( column_tran);
         llvm::Value * data = InitFVector( data_tran);
         llvm::Value * addr = IncAddr(x_ptr_vec_,index);
@@ -523,19 +543,21 @@ class CSR5JIT {
             llvm::Value* tmp = spmv_mul( addr , data );
             simd =  FAdd( simd , tmp );
         }
-        
 
         int shift_1[] = {1,2,3,4};
         llvm::Value * old_simd_shift_1 = Shuffle( old_simd, FZeroVec_,shift_1 );
         simd = FAdd(old_simd_shift_1,simd);
         llvm::Value * simd_tmp1;
         llvm::Value * simd_tmp2;
+        
         int index_tmp[] = {4,4,4,4};
         const int base = 0x1;
         switch(old_simd_flag) {
             case base:  //1000
                 simd_tmp1 = FReduce(simd);
-                Store( y_ptr_ + tile_row_index , simd_tmp1);
+                simd_tmp2 = LoadOffset( y_ptr_, ret_tile_dec.y_offset_[0]  + tile_row_index);
+                StoreOffset( y_ptr_ ,ret_tile_dec.y_offset_[0] + tile_row_index , FAdd( simd_tmp2, simd_tmp1));
+
                 break;
             case base + 0x8:  //1001
                 index_tmp[0] = 1; //1 4 4 4
@@ -544,6 +566,8 @@ class CSR5JIT {
                 index_tmp[0] = 2; //2 4 4 4
                 simd_tmp2 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp2,simd);
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
+
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             case base + 0x4:  //1010
@@ -552,6 +576,7 @@ class CSR5JIT {
                 simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp1,simd);
 
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             case base + 0x2:  //1100
@@ -562,6 +587,7 @@ class CSR5JIT {
                 simd_tmp2 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp2,simd);
 
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             ////////////
@@ -570,6 +596,7 @@ class CSR5JIT {
                 simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp1,simd);
 
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             case base + 0xb:  //1101
@@ -577,22 +604,27 @@ class CSR5JIT {
                 simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp1,simd);
 
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             case base + 0x6:  //1110
                 index_tmp[2] = 3; // {4,4,4,3};
                 simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
                 simd = FAdd(simd_tmp1,simd);
+
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             ///////////
             case base + 0xe:  //1111
                 
+                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
                 StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
                 break;
             default:
                 llvm::errs() << "unKnown case " << old_simd_flag << "\n";
         }
+
         return ret_row_index;
     }
 
@@ -602,7 +634,7 @@ class CSR5JIT {
         std::vector<llvm::Type*> arg_type;
         arg_type.push_back(t_double_p_);
         arg_type.push_back(t_double_p_);
-
+        row_num_ = row_num;
         llvm::FunctionType* ftype = llvm::FunctionType::get( t_int_ , arg_type, false );
         llvm::Function*  sum = llvm::Function::Create( ftype, llvm::GlobalValue::ExternalLinkage, "sum", mod_ptr_);
 
@@ -621,7 +653,7 @@ class CSR5JIT {
         int data_num = row_ptr[row_num];
         int begin_loc;
         for (begin_loc = 0 ; begin_loc < data_num - DELTA * OMEGA + 1 ; begin_loc += DELTA * OMEGA ) {
-            row_index = spmv_func_unit( data_ptr, row_ptr, column_ptr , begin_loc, row_index );
+            row_index = spmv_func_unit( data_ptr + begin_loc, row_ptr + row_index, column_ptr + begin_loc , begin_loc, row_index );
             PRINTINT(row_index);
         }
         //handle the special case
@@ -631,6 +663,7 @@ class CSR5JIT {
         if(rem_data > 0) {
             DATATYPE data_fill[ DELTA * OMEGA ];
             int column_fill[DELTA * OMEGA];
+            int *row_fill = (int*) malloc(sizeof(int)*(row_num - row_index+1));
             for( int i = 0 ; i < rem_data ; i++  ) {
                 data_fill[i] = data_ptr[ begin_loc + i ];
                 column_fill[i] = column_ptr[ begin_loc + i ];
@@ -639,7 +672,11 @@ class CSR5JIT {
                 data_fill[i] = 0;
                 column_fill[i] = column_ptr[ begin_loc + rem_data - 1 ];
             }
-            row_index = spmv_func_unit( data_fill, row_ptr, column_fill , begin_loc, row_index );
+            for( int i = row_index ; i < row_num_ ; i++ ) {
+                row_fill[i-row_index] = row_ptr[i];
+            }
+            row_fill[ row_num_ - row_index ] = data_num - rem_data + DELTA * OMEGA;
+            row_index = spmv_func_unit( data_fill, row_fill, column_fill , begin_loc, row_index );
         }
 //        SCATTER( addr,res ,TrueVec_ );
 //        res = FReduce(res);
@@ -699,11 +736,12 @@ int main(int argc, char const *argv[]) {
     const int row_num = 8;
     CSR5JIT * csr5_jit_ptr = new CSR5JIT(4,4);
     int column_array[] = { 2,3,0,1, 2,3,4,5, 6,1,3,4, 5,1,3,4 ,
-                           6,7,0,3,6,0,3,4,6,7,2,0,3,4,6,7};
-    int row_array[] = {0 , 2 , 9, 13, 18, 21, 26, 27, 32 };
+                           6,7,0,3, 6,0,3,4, 6,7,2,0,1,2, 3,4,6,7, 
+                           };
+    int row_array[] = {0 , 2 , 9, 13, 18, 21, 26, 27, 34 };
 
-    DATATYPE A_array[32];
-    for( int i = 0 ; i < 32; i++ ) {
+    DATATYPE A_array[34];
+    for( int i = 0 ; i < 34; i++ ) {
 #ifdef DEBUG
         A_array[i] = 1;
 #else
@@ -729,7 +767,7 @@ int main(int argc, char const *argv[]) {
     csr5_jit_ptr->write_bit();
 
     llvm::errs() << "We just constructed this LLVM module:\n\n---------\n" << *csr5_jit_ptr->get_mod_ptr();
-
+    fflush(stdout);
 
     FP spvm_func = csr5_jit_ptr->get_function();
     printf("%d\n", spvm_func(y_array,x_array));

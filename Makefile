@@ -1,5 +1,7 @@
 CC=clang++
-CFLAGS=-O3 -ffast-math `llvm-config --cflags`
+#CFLAGS=-O3 -ffast-math `llvm-config --cflags`
+
+CFLAGS=-g -ffast-math `llvm-config --cflags`
 LD=clang++
 LDFLAGS= -ffast-math `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`
 
