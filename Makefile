@@ -6,13 +6,17 @@ LD=clang++
 LDFLAGS= -ffast-math `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`
 
 all: sum
+LKFILE= sum.o Timers.o csr_matrix.o
+sum: $(LKFILE)
+	$(LD) $^ $(LDFLAGS) -o $@
 
 sum.o: sum.cpp
 	$(CC) $(CFLAGS) -c $<
 #	$(CC) $< -S $(CFLAGS) -o sum.S
-sum: sum.o
-	$(LD) $< $(LDFLAGS) -o $@
-
+Timers.o:Timers.cpp
+	$(CC) $< -c -o $@
+csr_matrix.o:csr_matrix.cpp
+	$(CC) $< -c -o $@
 sum.bc: sum
 	./sum 0 0
 
@@ -20,4 +24,4 @@ sum.ll: sum.bc
 	llvm-dis $<
 
 clean:
-	-rm -f sum.o sum sum.bc sum.ll
+	-rm -f sum.o sum sum.bc sum.ll *.o
