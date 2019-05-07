@@ -5,8 +5,10 @@
  *     return a + b;
  * }
  */
-#define OMEGA 16
+#define OMEGA 5
 #define DELTA 4
+
+#include <map>
 #include "llvm/IR/InstrTypes.h"
 
 #include "llvm/IR/Verifier.h"
@@ -15,7 +17,6 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
-
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/BasicBlock.h"
@@ -142,7 +143,30 @@ class CSR5JIT {
     llvm::Value * y_ptr_vec_;
     int row_num_;
     char *error_;
+    std::map<uint64_t,int> mask_count_; 
     public:
+    void AddMask( int * mask_vec  ) {
+        uint64_t mask = 0;
+        for(int i = 0 ; i < OMEGA ; i++ ) {
+            mask |= mask_vec[i] << ( i * DELTA );
+        }
+        auto it = mask_count_.find( mask  );
+        if( it == mask_count_.end() ) {
+            mask_count_[mask] = 0;
+        } else {
+            mask_count_[mask]++;
+        }
+    }
+    void printMask( ) {
+       int num = 0 ;
+       printf("\nMask statistics\n");
+       for( auto it = mask_count_.begin() ; it != mask_count_.end(); it++ )  {
+            printf("%lx : %d\n", it->first , it->second);
+            num++;
+       }
+       printf("count : %d\n", num);
+    }
+
     llvm::Module * get_mod_ptr() {
         return mod_ptr_;
     }
@@ -500,7 +524,7 @@ class CSR5JIT {
         int * empty_offset = ret_tile_dec.empty_offset_;
         int column_tran[OMEGA* DELTA];
         DATATYPE data_tran[ OMEGA* DELTA];
-
+        AddMask( ret_tile_dec.bit_flag_ );
         for( int j = 0 ; j < omega_ ; j++) {
             for( int i = 0 ; i < lanes_ ; i++ ) {
                column_tran[j* lanes_ + i ] = tile_column_ptr[j + i * omega_]  ;
@@ -651,8 +675,11 @@ class CSR5JIT {
         y_ptr_vec_ = Broadcast( y_ptr_ );
 
         int row_index = 0;
-        int data_num = row_ptr[row_num];
+        const int data_num = row_ptr[row_num] ;
+
+//        const int data_num = row_ptr[row_num] / 1000 ;
         int begin_loc;
+        int tile_num = data_num / (DELTA * OMEGA);
         for (begin_loc = 0 ; begin_loc < data_num - DELTA * OMEGA + 1 ; begin_loc += DELTA * OMEGA ) {
             row_index = spmv_func_unit( data_ptr + begin_loc, row_ptr + row_index, column_ptr + begin_loc , begin_loc, row_index );
 //            PRINTINT(row_index);
@@ -662,6 +689,7 @@ class CSR5JIT {
         
         int rem_data = data_num % (DELTA * OMEGA);
         if(rem_data > 0) {
+            tile_num++;
             DATATYPE data_fill[ DELTA * OMEGA ];
             int column_fill[DELTA * OMEGA];
             int *row_fill = (int*) malloc(sizeof(int)*(row_num - row_index+1));
@@ -679,6 +707,7 @@ class CSR5JIT {
             row_fill[ row_num_ - row_index ] = data_num - rem_data + DELTA * OMEGA;
             row_index = spmv_func_unit( data_fill, row_fill, column_fill , begin_loc, row_index );
         }
+        PRINTINT( tile_num );
 //        SCATTER( addr,res ,TrueVec_ );
 //        res = FReduce(res);
 //        Store( y_ptr,res);
@@ -773,13 +802,19 @@ csrSparseMatrix little_test( ) {
 
     return csr_sparse_matrix;
 }
+//#define LITTEL_CASE
 int main(int argc, char const *argv[]) {
-
+    #ifdef LITTEL_CASE
+    csrSparseMatrix sparseMatrix = little_test();
+    csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
+    #else
+    if(argc <= 1 ) {
+        printf("Erro: You need to modify a file to read\n");
+        return 0;
+    }
     printf("%s\n",argv[1]);
     csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
-//    csrSparseMatrix sparseMatrix = little_test();
-//    csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
-
+    #endif
     DATATYPE * data_ptr = sparseMatrixPtr->data_ptr;
     int * column_ptr = sparseMatrixPtr->column_ptr;
     int * row_ptr = sparseMatrixPtr->row_ptr;
@@ -810,31 +845,49 @@ int main(int argc, char const *argv[]) {
 
     Timer::printTimer("construct_compiler");
 
+//    csr5_jit_ptr->printMask();
+
+//    return 0;
     Timer::startTimer("compiler");
     csr5_jit_ptr->compiler_jit();
     Timer::endTimer("compiler");
 
     Timer::printTimer("compiler");
-    csr5_jit_ptr->write_bit();
+    
+    Timer::startTimer("writebit");
+//    csr5_jit_ptr->write_bit();
 
+    Timer::endTimer("writebit");
+
+    Timer::printTimer("writebit");
 //    llvm::errs() << "We just constructed this LLVM module:\n\n---------\n" << *csr5_jit_ptr->get_mod_ptr();
-    fflush(stdout);
 
     Timer::startTimer("getfunction");
     FP spvm_func = csr5_jit_ptr->get_function();
 
     Timer::endTimer("getfunction");
-
+    
     Timer::printTimer("getfunction");
     Timer::startTimer("calculate");
-    printf("%d\n", spvm_func(y_array,x_array));
+
+//    for( int i = 0 ; i < 2000; i+=2 )
+//        spvm_func( y_array + i , x_array );      
+//    printf("%d\n", spvm_func(y_array,x_array));
 
     Timer::endTimer("calculate");
 
     Timer::printTimer("calculate");
-    
+    Timer::startTimer("origin time");
     spvm_local( y_array_bak, x_array, data_ptr , column_ptr, row_ptr, row_num ) ;
-
+    Timer::endTimer("origin time");
+    Timer::printTimer("origin time");
+    printf("%f %f\n",y_array[0],y_array_bak[0]);
+    for( int i = 0 ; i < row_num ; i++ ) {
+        if( fabs(y_array[i] - y_array_bak[i] ) > 1e-6) {
+            printf(" %d %f %f\n", i , y_array[i],y_array_bak[i]);
+            break;
+        }
+    }
 //    print_fvec( y_array , row_num  );
 //    print_fvec( y_array_bak, row_num);
     printf("\n");
