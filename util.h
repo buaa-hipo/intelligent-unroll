@@ -14,10 +14,12 @@ int binarySearchLower(const int *arr, const int start,const int end,const int ta
 double sum_double(const double * array,const int size) ;
 double varience_double(const double * array1 , const double * array2,const int array_size) ;
 void set_double (double * array , double data, const int size) ;
+
+#define ANONYMOUSLIB_X86_CACHELINE 64
 #define ROUNDING_UP_256( addr) ( ((((addr) - 1)>>5)+1)<<5  )
 //#define ASSINED_SIZE(size) ( ((((size)-1)>>5)+1) <<5 )
 //#define SIMPLE_MALLOC(type,size) ((type*)malloc(  ASSINED_SIZE(sizeof(type)*(size))) )
-#define SIMPLE_MALLOC(type,size) ((type*)malloc(  ROUNDING_UP_256( sizeof(type)*(size) ) ))
+#define SIMPLE_MALLOC(type,size) ((type*)_mm_malloc(  ROUNDING_UP_256( sizeof(type)*(size) ) , ANONYMOUSLIB_X86_CACHELINE ))
 int sum_int( const int * array , const int size );
 #define MY_PRINT 1
 
@@ -59,9 +61,15 @@ int sum_int( const int * array , const int size );
                                 printf(#a1"\n") ;print_vector_int(a1,a2);      \
                                 }                                               \
                                 } while(0)
+#define my_print_vector_xchar(a1,a2) do {         \
+                                if(MY_PRINT) {  \
+                                printf(#a1"\n") ;print_vector_xchar(a1,a2);      \
+                                }                                               \
+                                } while(0)
 
 void print_vector_double(const double * a, const int len);
 void print_vector_int(const int * a, const int len) ;
 
+void print_vector_xchar(const unsigned char * a, const int len) ;
 void write_vector_int_to_File( const char * filename ,const  double * data , const int size );
 #endif

@@ -5,9 +5,7 @@
  *     return a + b;
  * }
  */
-#define OMEGA 5
-#define DELTA 4
-
+#include "llvm_lib/llvm_module.h"
 #include <map>
 #include "llvm/IR/InstrTypes.h"
 
@@ -62,834 +60,132 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define DATATYPE double
-typedef int(*FP)(DATATYPE *,DATATYPE*);
 #include "csr_matrix.h"
 #include "Timers.hpp"
-#define CHECK(x) if(!(x)) \
-            llvm::outs() << "CHECK failed:"#x << " "
+#include <sstream>
+#include "analyze_csr5.hpp"
+#include "statement.hpp"
+#include "csr5_statement.hpp"
+#include "statement_print.hpp"
+#include "small_case.hpp"
+#include "llvm_lib/llvm_codegen.hpp"
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
-//using namespace llvm;
-    void print_fvec( DATATYPE * ptr , const int num ) {
-        for( int i = 0 ; i < num ; i++)
-            printf("%f ",ptr[i]);
-        printf("\n");
-        fflush(stdout);
-    }
-    void print_vec( int * ptr , const int num ) {
-        for( int i = 0 ; i < num ; i++)
-            printf("%d ",ptr[i]);
-        printf("\n");
-        fflush(stdout);
-    }
-#define PRINTINTVEC( x,len)  do{\
-    printf(#x" "#len" \n");\
-    print_vec(x,len); } while(0)
-
-#define PRINTDOUBLEVEC( x,len)  do{\
-    printf(#x" "#len" \n");\
-    print_fvec(x,len); } while(0)
-
-class CSR5JIT {
-    llvm::LLVMContext * ctx_ptr_;
-    llvm::Module* mod_ptr_;
-    llvm::IRBuilder<>* builder_;
-
-    LLVMExecutionEngineRef engine_;
-    int lanes_;
-    int omega_;
-    const int alinements_ = 256;
-    llvm::Type*  t_int_;
-    llvm::Type*  t_int64_ ;
-    llvm::Type*  t_bool_ ;
-    llvm::Type*  t_double_;
-
-    llvm::Type*  t_int_p_ ;
-    llvm::Type*  t_int64_p_;
-    llvm::Type*  t_bool_p_;
-    llvm::Type*  t_double_p_;
-
-    llvm::Type* t_bool_vec_;
-    llvm::Type* t_int_vec_;
-    llvm::Type* t_int64_vec_;
-    llvm::Type*  t_double_vec_;
-
-    llvm::Type* t_int_vec_p_;
-    llvm::Type*  t_double_vec_p_;
-
-    llvm::Type* t_int_ptr_vec_ ;
-    llvm::Type*  t_double_ptr_vec_;
-
-    llvm::Constant *Zero_ ;
-
-    llvm::Constant *FZero_ ;
-    llvm::Constant *One_ ;
-    llvm::Constant *True_;
-
-
-    llvm::Constant *FOne_ ;
-    llvm::Constant* ZeroVec_;
-
-    llvm::Constant* FZeroVec_;
-    llvm::Constant* TrueVec_;
-    llvm::Argument * y_ptr_;
-    llvm::Argument * x_ptr_;
-
-    llvm::Value * x_vec_ptr_;
-    llvm::Value * y_vec_ptr_;
-    llvm::Value * x_ptr_vec_;
-    llvm::Value * y_ptr_vec_;
-    int row_num_;
-    char *error_;
-    std::map<uint64_t,int> mask_count_; 
-    public:
-    void AddMask( int * mask_vec  ) {
-        uint64_t mask = 0;
-        for(int i = 0 ; i < OMEGA ; i++ ) {
-            mask |= mask_vec[i] << ( i * DELTA );
-        }
-        auto it = mask_count_.find( mask  );
-        if( it == mask_count_.end() ) {
-            mask_count_[mask] = 0;
-        } else {
-            mask_count_[mask]++;
-        }
-    }
-    void printMask( ) {
-       int num = 0 ;
-       printf("\nMask statistics\n");
-       for( auto it = mask_count_.begin() ; it != mask_count_.end(); it++ )  {
-            printf("%lx : %d\n", it->first , it->second);
-            num++;
-       }
-       printf("count : %d\n", num);
-    }
-
-    llvm::Module * get_mod_ptr() {
-        return mod_ptr_;
-    }
-    CSR5JIT(const int lanes,const int omega) {
-        error_ = NULL;
-	    ctx_ptr_ = new llvm::LLVMContext();
-	    lanes_ = lanes;
-        omega_ = omega;
-        t_int_ =  llvm::Type::getInt32Ty(*ctx_ptr_);
-        t_int64_ =  llvm::Type::getInt64Ty(*ctx_ptr_);
-        t_bool_ =  llvm::Type::getInt1Ty(*ctx_ptr_);
-        t_double_ =  llvm::Type::getDoubleTy(*ctx_ptr_);
-
-        t_int_p_ = t_int_->getPointerTo();
-        t_int64_p_ = t_int64_->getPointerTo();
-        t_bool_p_ =  t_bool_->getPointerTo();
-        t_double_p_ =  t_double_->getPointerTo();
-
-        t_int_vec_ = llvm::VectorType::get( t_int_, lanes_ );
-        t_int64_vec_ = llvm::VectorType::get( t_int64_, lanes_ );
-        t_bool_vec_ = llvm::VectorType::get( t_bool_, lanes_ );
-        t_double_vec_ = llvm::VectorType::get( t_double_, lanes_ );
-
-	    t_int_vec_p_ = t_int_vec_->getPointerTo();
-	    t_double_vec_p_ = t_double_vec_->getPointerTo();
-
-    	t_int_ptr_vec_ = llvm::VectorType::get(t_int_p_,lanes_);
-    	t_double_ptr_vec_ = llvm::VectorType::get(t_double_p_,lanes_);
-
-        Zero_ = llvm::ConstantInt::get( t_int_ , 0);
-
-        FZero_ = llvm::ConstantFP::get( t_double_ , 0);
-        One_ = llvm::ConstantInt::get( t_int_ , 1);
-        FOne_ = llvm::ConstantFP::get( t_double_ , 1);
-        True_ = llvm::ConstantInt::get( t_bool_ , 1);
-        ZeroVec_ = llvm::ConstantVector::getSplat( lanes_, Zero_);
-
-        FZeroVec_ = llvm::ConstantVector::getSplat( lanes_, FZero_);
-        TrueVec_ = llvm::ConstantVector::getSplat( lanes_, True_ );
-        mod_ptr_ = new llvm::Module("my_module", *ctx_ptr_ );
-
-        builder_ = new llvm::IRBuilder<>(*ctx_ptr_);
-    }
-    llvm::Value* CreateBufferPtr( llvm::Type* t, llvm::Value* buffer, llvm::Value* index) {
-   	    llvm::PointerType* btype = llvm::dyn_cast<llvm::PointerType>(buffer->getType());
-	    if(btype == nullptr) {
-        	fprintf(stderr, "error");
-	    }
-	    llvm::PointerType* ptype = t->getPointerTo(btype->getAddressSpace());
-    	 if (btype != ptype) {
-      	    buffer = builder_->CreatePointerCast(buffer, ptype);
-    	 }
-
-         return builder_->CreateInBoundsGEP(buffer, index);
-    }
-    llvm::Constant * ConstInt32(const int value) {
-        return llvm::ConstantInt::get( t_int_ , value);
-    }
-    llvm::CallInst * FReduce( llvm::Value * src ) {
-
-        llvm::Value * Acc = llvm::UndefValue::get( t_double_ );
-        llvm::FastMathFlags FMFFast;
-        FMFFast.setFast();
-        llvm::CallInst * ret = builder_->CreateFAddReduce(Acc,src);
-
-        if(!ret->getType()->isDoubleTy()) {
-            llvm::errs() << "is double\n" << *mod_ptr_ << "\n";
-        }
-        ret->setFastMathFlags(FMFFast);
-        return ret;
-    }
-
-    llvm::CallInst * Reduce( llvm::Value * src ) {
-        return builder_->CreateAddReduce(src);
-    }
-    llvm::Value* Broadcast(llvm::Value* value) {
-        llvm::Constant* undef = llvm::UndefValue::get( llvm::VectorType::get(value->getType(), lanes_) );
-        value = builder_->CreateInsertElement(undef, value, Zero_);
-        return builder_->CreateShuffleVector(value, undef, ZeroVec_);
-    }
-
-    llvm::Value * BitCast( llvm::Value * value , llvm::Type * type ) {
-        return builder_->CreateBitCast(value, type);
-    }
-    llvm::Value * InitFVector( DATATYPE vec[] ) {
-        llvm::Value * Vec = llvm::UndefValue::get( t_double_vec_ );
-
-        for( int i = 0 ; i < lanes_ ; i++ ) {
-            llvm::Value * index = llvm::ConstantInt::get(t_int_, i  );
-            llvm::Value * data = llvm::ConstantFP::get(t_double_,vec[i]);
-	        Vec = builder_->CreateInsertElement( Vec , data , index);
-        }
-        return Vec;
-    }
-    llvm::Value * InitBoolVector( int mask ) {
-        llvm::Value * Vec = llvm::UndefValue::get( t_bool_vec_ );
-
-        for( int i = 0 ; i < lanes_ ; i++ ) {
-            llvm::Value * index = llvm::ConstantInt::get(t_int_, i  );
-            llvm::Value * data;
-            if( (mask >> i ) & 0x1 )
-                data = llvm::ConstantInt::get(t_bool_,true);
-            else
-                data = llvm::ConstantInt::get(t_bool_,false);
-	        Vec = builder_->CreateInsertElement( Vec , data , index);
-        }
-        return Vec;
-    }
-
-    llvm::Value * InitVector( int vec[] ) {
-        llvm::Value * Vec = llvm::UndefValue::get( t_int_vec_ );
-
-        for( int i = 0 ; i < lanes_ ; i++ ) {
-            llvm::Value * index = llvm::ConstantInt::get(t_int_, i  );
-            llvm::Value * data = llvm::ConstantInt::get(t_int_,vec[i]);
-	        Vec = builder_->CreateInsertElement( Vec , data , index);
-        }
-        return Vec;
-    }
-    llvm::Value * IncAddr( llvm::Value * PtrVec , llvm::Value * Vec ) {
-        return builder_->CreateInBoundsGEP( PtrVec, Vec);
-    }
-    llvm::CallInst * FGather( llvm::Value * Ptr, llvm::Value * Mask) {
-        return  builder_->CreateMaskedGather(  Ptr , alinements_,Mask , FZeroVec_);
-    }
-
-    llvm::CallInst * Gather( llvm::Value * Ptr, llvm::Value * Mask) {
-        return  builder_->CreateMaskedGather(  Ptr , alinements_,Mask , ZeroVec_);
-    }
-    llvm::StoreInst * Store(llvm::Value * addr, llvm::Value * value) {
-
-        return builder_->CreateAlignedStore( value, addr, alinements_, false);
-    }
-    llvm::Value* ExtractElement( llvm::Value* vec,const int index ) {
-        llvm::Value * index_value = llvm::ConstantInt::get(t_int_, index  );
-        return builder_->CreateExtractElement( vec , index_value );
-    }
-    llvm::Value* LoadOffset( llvm::Value * ptr ,const int index ) {
-        llvm::Value * index_value = llvm::ConstantInt::get(t_int_, index  );
-        return Load(IncAddr(ptr,index_value));
-    }
-
-    void StoreOffset( llvm::Value * ptr ,const int index ,llvm::Value* value) {
-        llvm::Value * index_value = llvm::ConstantInt::get(t_int_, index  );
-        Store(IncAddr(ptr,index_value), value);
-    }
-    llvm::Value *  LoadWithMask(int * y_offset, int * empty_offset,bool is_empty ,int write_flag, int tile_row_begin ) {
-            llvm::Value * ret;
-            int y_offset_add_tile_begin[ DELTA ];
-            if(is_empty) {
-                for (int i = 0; i < DELTA ; i++ ) {
-                    y_offset_add_tile_begin[i] = empty_offset[ y_offset[i] - 1] + tile_row_begin;
-                }
-            } else {
-               for (int i = 0; i < DELTA ; i++ ) {
-                    y_offset_add_tile_begin[i] = y_offset[i] + tile_row_begin - 1;
-                }
-            }
-            llvm::Value* ptr_vec = IncAddr(y_ptr_vec_ ,InitVector(y_offset_add_tile_begin));
-
-            ret = FGather( ptr_vec ,  InitBoolVector(write_flag) );
-            return ret;
-    }
-
-    void update_y_offset(int * y_offset, int write_flag ) {
-        for( int i = 0 ; i < DELTA ; i++  )  {
-            y_offset[i] += (0x1 & write_flag>>i);
-        }
-
-    }
-    void StoreWithMask(llvm::Value* simd ,int * y_offset, int * empty_offset,bool is_empty ,int write_flag, int tile_row_begin ) {
-        switch( write_flag ) {
-            case 0x1:
-                if(is_empty)
-                    StoreOffset(y_ptr_, tile_row_begin + empty_offset[ y_offset[0] - 1],ExtractElement(simd,0));
-                else
-                    StoreOffset(y_ptr_, tile_row_begin + y_offset[0] - 1,ExtractElement(simd,0));
-                break;
-            case 0x2:
-                if(is_empty)
-                    StoreOffset(y_ptr_, tile_row_begin + empty_offset[ y_offset[1] - 1 ],ExtractElement(simd,1));
-                else
-                    StoreOffset(y_ptr_, tile_row_begin + y_offset[1] - 1 ,ExtractElement(simd,1));
-                break;
-            case 0x4:
-                if(is_empty)
-                    StoreOffset(y_ptr_, tile_row_begin + empty_offset[ y_offset[2]  - 1],ExtractElement(simd,2));
-                else
-                    StoreOffset(y_ptr_, tile_row_begin + y_offset[2] - 1,ExtractElement(simd,2));
-                break;
-            case 0x8:
-                if(is_empty)
-                    StoreOffset(y_ptr_, tile_row_begin + empty_offset[ y_offset[3] - 1 ],ExtractElement(simd,3));
-                else
-                    StoreOffset(y_ptr_, tile_row_begin + y_offset[3] - 1,ExtractElement(simd,3));
-                break;
-            default:
-                int y_offset_add_tile_begin[ DELTA ];
-                if(is_empty) {
-                    for (int i = 0; i < DELTA ; i++ ) {
-                        y_offset_add_tile_begin[i] = empty_offset[ y_offset[i] - 1 ] + tile_row_begin;
-                    }
-                } else {
-                    for (int i = 0; i < DELTA ; i++ ) {
-                        y_offset_add_tile_begin[i] = y_offset[i] + tile_row_begin - 1;
-                    }
-                }
-                llvm::Value* ptr_vec = IncAddr(y_ptr_vec_ ,InitVector(y_offset_add_tile_begin));
-
-                SCATTER( ptr_vec , simd , InitBoolVector(write_flag) );
-                break;
-        }
-    }
-
-    llvm::Value * Mul( llvm::Value * x , llvm::Value * y ) {
-        return builder_->CreateMul( x , y);
-    }
-    llvm::Value * FMul( llvm::Value * x , llvm::Value * y ) {
-        return builder_->CreateFMul( x , y);
-    }
-    llvm::Value * FAdd( llvm::Value * x , llvm::Value * y ) {
-        return builder_->CreateFAdd( x , y);
-    }
-
-    llvm::Value * Add( llvm::Value * x , llvm::Value * y ) {
-        return builder_->CreateAdd( x , y);
-    }
-    llvm::LoadInst* Load( llvm::Value * addr ) {
-        return builder_->CreateAlignedLoad( addr , alinements_, false);
-    }
-    void Return( llvm::Value * ret) {
-        builder_->CreateRet(ret);
-    }
-    llvm::Value* spmv_mul(  llvm::Value * x_addr_vec, llvm::Value * data) {
-        llvm::Value * gather_value = FGather( x_addr_vec, TrueVec_ );
-        llvm::Value * mult_value = FMul( gather_value, data );
-        return mult_value;
-    }
-
-    llvm::Value* spmv_reduce( llvm::Value* y_ptr, llvm::Value * x_addr_vec, llvm::Value * data_vec_ptr) {
-
-        llvm::Value * mult_value = spmv_mul( x_addr_vec , data_vec_ptr);
-        llvm::Value * ret_value = FReduce( mult_value );
-        CHECK( ret_value->getType()->isDoubleTy()) << "ret value type is not double type\n";
-        return ret_value;
-    }
-    void SCATTER( llvm::Value* ptr_vec, llvm::Value * data_vec, llvm::Value * mask_vec) {
-        builder_->CreateMaskedScatter(data_vec,ptr_vec,alinements_,mask_vec);
-    }
-    llvm::Value* ShuffleWithMask( llvm::Value* first,llvm::Value* second,int mask) {
-        int index[DELTA];
-        for( int i = 0 ; i < DELTA ; i++) {
-           index[i] =  i + DELTA * ( (mask >> i) & (0x1 ) );
-        }
-        return builder_->CreateShuffleVector( first, second,InitVector(index));
-    }
-
-    llvm::Value* Shuffle( llvm::Value* first,llvm::Value* second,int *index) {
-
-        return builder_->CreateShuffleVector( first, second,InitVector(index));
-    }
-/*    llvm::Function * CreateFunc(  ) {
-    }
-    std::vector<llvm::Type*> get_args_type(  ) {
-
-    }*/
-    typedef struct tile_dec {
-        int bit_flag_[ OMEGA ];
-        int y_offset_[ DELTA ];
-        int * empty_offset_;
-        bool is_empty_;
-    } tile_dec;
-    tile_dec generate_tile_dec(const int * row_ptr, const int begin_loc, int & tile_row_index) {
-        tile_dec info;
-//        const int * row_ptr = &row_ptr_base[tile_row_index];
-        for( int i = 0 ; i < OMEGA ; i++ ) {
-//            for( int j = 0 ; j < DELTA ; j++) {
-                info.bit_flag_[i] = 0;
-//            }
-        }
-        for( int j = 0 ; j < DELTA ; j++ ) {
-            info.y_offset_[j] = 0;
-        }
-        int temp_y_offset[DELTA];
-        for( int j = 0 ; j < DELTA ; j++ ) {
-            temp_y_offset[j] = 0 ;
-        }
-
-        info.bit_flag_[0] = 1;
-        temp_y_offset[0] ++;
-        int row_index = 0;
-        bool is_empty = false;
-        int distance;
-        while( row_index + 1 + tile_row_index < row_num_ && row_ptr[row_index] == row_ptr[row_index + 1]) {row_index++;}
-        
-        distance = row_ptr[row_index+1] - begin_loc;
-
-        std::vector<int> empty_offset_vec;
-        CHECK(distance >= 0) << "Erro\n";
-        
-        while( distance < OMEGA * DELTA ) {
-//            info.bit_flag_[ distance / OMEGA + (distance % OMEGA) * DELTA ] = 1;
-            info.bit_flag_[ distance % OMEGA ] |= 1 << ( distance / OMEGA);
-            temp_y_offset[ distance / OMEGA ] ++;
-
-            empty_offset_vec.push_back(row_index);
-            row_index++;
-
-
-            if(row_index + tile_row_index >= row_num_ ) {
-                break;
-            }
-            while(row_index + 1 + tile_row_index < row_num_ &&  row_ptr[row_index] == row_ptr[row_index+1] ) {
-                row_index++;
-                is_empty = true;
-            }
-            
-            distance = row_ptr[row_index+1] - begin_loc;
-        }
-        empty_offset_vec.push_back(row_index);
-        if( distance == OMEGA * DELTA ) {
-            row_index++;
-        }
-        info.is_empty_ = is_empty;
-        if(is_empty) {
-            int empty_size = empty_offset_vec.size();
-            info.empty_offset_ = (int*)malloc(sizeof(int) * empty_size);
-            for (int i = 0 ; i < empty_size; i++ ) {
-                info.empty_offset_[i] = empty_offset_vec[i];
-            }
-        }
-        for( int j = 1 ; j < DELTA ; j++ ) {
-            info.y_offset_[j] = info.y_offset_[j-1] + temp_y_offset[j-1];
-        }
-        if(is_empty) {
-//            PRINTINTVEC( info.empty_offset_ , empty_offset_vec.size() );
-        }
-//        PRINTINTVEC( info.y_offset_, DELTA );
-
-//        PRINTINTVEC( info.bit_flag_, OMEGA );
-        tile_row_index += row_index;
-        return info;
-    }
-
-    int spmv_func_unit( const DATATYPE  * data_ptr, const int * row_ptr, const int * column_ptr , const int begin_loc, const int  row_index ) {
-
-        int ret_row_index = row_index;
-        const int tile_row_index = row_index;
-        const int * tile_column_ptr = column_ptr;
-        const DATATYPE * tile_data_ptr = data_ptr;
-        //DATATYPE * tile_y_ptr = y_ptr + begin_loc;
-
-        tile_dec ret_tile_dec = generate_tile_dec( row_ptr, begin_loc,ret_row_index);
-        int * y_offset = ret_tile_dec.y_offset_;
-        int * empty_offset = ret_tile_dec.empty_offset_;
-        int column_tran[OMEGA* DELTA];
-        DATATYPE data_tran[ OMEGA* DELTA];
-        AddMask( ret_tile_dec.bit_flag_ );
-        for( int j = 0 ; j < omega_ ; j++) {
-            for( int i = 0 ; i < lanes_ ; i++ ) {
-               column_tran[j* lanes_ + i ] = tile_column_ptr[j + i * omega_]  ;
-               data_tran[j*lanes_ + i] =  tile_data_ptr[j + i * omega_];
-            }
-        }
-
-        llvm::Value * index = InitVector( column_tran);
-        llvm::Value * data = InitFVector( data_tran);
-        llvm::Value * addr = IncAddr(x_ptr_vec_,index);
-
-        llvm::Value* simd =  spmv_mul( addr, data );
-        llvm::Value* old_simd = FZeroVec_;
-        int old_simd_flag = 0;
-        int write_flag = 0;
-        old_simd_flag |= ret_tile_dec.bit_flag_[0];
-        update_y_offset(ret_tile_dec.y_offset_, old_simd_flag);
-        for( int i = 1 ; i < omega_ ; i++ ) {
-            index = InitVector( &column_tran[i*lanes_]);
-            addr = IncAddr(x_ptr_vec_ , index );
-            data = InitFVector( &data_tran[i*lanes_] );
-
-            //process old simd
-            int cur_old_simd_flag = ret_tile_dec.bit_flag_[i] & (~old_simd_flag);
-            if( cur_old_simd_flag != 0x0 ) {
-                old_simd = ShuffleWithMask( old_simd, simd ,cur_old_simd_flag);
-                update_y_offset( ret_tile_dec.y_offset_,cur_old_simd_flag );
-            }
-
-           //process memory write
-            write_flag = ret_tile_dec.bit_flag_[i] & old_simd_flag;
-            if( write_flag != 0x0) {
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , write_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , write_flag,  tile_row_index );
-                update_y_offset( ret_tile_dec.y_offset_,write_flag );
-            }
-            if( ret_tile_dec.bit_flag_[i] != 0x0 ) {
-            simd = ShuffleWithMask( simd , FZeroVec_ , ret_tile_dec.bit_flag_[i]);
-            }
-            old_simd_flag |= cur_old_simd_flag; //update old_simd_flag
-            llvm::Value* tmp = spmv_mul( addr , data );
-            simd =  FAdd( simd , tmp );
-        }
-//        PRINTINTVEC( ret_tile_dec.y_offset_,DELTA );
-        int shift_1[] = {1,2,3,4};
-        llvm::Value * old_simd_shift_1 = Shuffle( old_simd, FZeroVec_,shift_1 );
-        simd = FAdd(old_simd_shift_1,simd);
-        llvm::Value * simd_tmp1;
-        llvm::Value * simd_tmp2;
-        
-        int index_tmp[] = {4,4,4,4};
-        const int base = 0x1;
-        switch(old_simd_flag) {
-            case base:  //1000
-                simd_tmp1 = FReduce(simd);
-                simd_tmp2 = LoadOffset( y_ptr_, ret_tile_dec.y_offset_[0] - 1  + tile_row_index);
-                StoreOffset( y_ptr_ ,ret_tile_dec.y_offset_[0] - 1 + tile_row_index , FAdd( simd_tmp2, simd_tmp1));
-
-                break;
-            case base + 0x8:  //1001
-                index_tmp[0] = 1; //1 4 4 4
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-                index_tmp[0] = 2; //2 4 4 4
-                simd_tmp2 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp2,simd);
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            case base + 0x4:  //1010
-                index_tmp[0] = 1;
-                index_tmp[2] = 3; //1 4 3 4
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            case base + 0x2:  //1100
-                index_tmp[1] = 2 ; // 4,2,4,4
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-                index_tmp[1] = 3 ; //4,3,4,4;
-                simd_tmp2 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp2,simd);
-
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            ////////////
-            case base + 0xc:  //1011
-                index_tmp[0] = 1;// {1,4,4,4};
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            case base + 0xa:  //1101
-                index_tmp[1] = 2;// = {4,2,4,4};
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            case base + 0x6:  //1110
-                index_tmp[2] = 3; // {4,4,4,3};
-                simd_tmp1 = Shuffle(simd,FZeroVec_,index_tmp);
-                simd = FAdd(simd_tmp1,simd);
-
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            ///////////
-            case base + 0xe:  //1111
-                
-                simd = FAdd( simd , LoadWithMask( ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_ , ret_tile_dec.is_empty_ , old_simd_flag, tile_row_index ));
-                StoreWithMask( simd , ret_tile_dec.y_offset_, ret_tile_dec.empty_offset_, ret_tile_dec.is_empty_ , old_simd_flag,  tile_row_index );
-                break;
-            default:
-                llvm::errs() << "unKnown case " << old_simd_flag << "\n";
-        }
-
-        return ret_row_index;
-    }
-
-    void spmv_func(const DATATYPE  * data_ptr,const int * column_ptr,const int * row_ptr, const int row_num) {
-
-
-        std::vector<llvm::Type*> arg_type;
-        arg_type.push_back(t_double_p_);
-        arg_type.push_back(t_double_p_);
-        row_num_ = row_num;
-        llvm::FunctionType* ftype = llvm::FunctionType::get( t_int_ , arg_type, false );
-        llvm::Function*  sum = llvm::Function::Create( ftype, llvm::GlobalValue::ExternalLinkage, "sum", mod_ptr_);
-
-
-        llvm::BasicBlock * entry  = llvm::BasicBlock::Create(*ctx_ptr_, "entry", sum);
-        builder_->SetInsertPoint(entry);
-        y_ptr_ = & sum->arg_begin()[0];
-        x_ptr_ = & sum->arg_begin()[1];
-
-        x_vec_ptr_ = BitCast( x_ptr_ , t_double_vec_p_ );
-        y_vec_ptr_ = BitCast( y_ptr_ , t_double_vec_p_ );
-        x_ptr_vec_ = Broadcast( x_ptr_ );
-        y_ptr_vec_ = Broadcast( y_ptr_ );
-
-        int row_index = 0;
-        const int data_num = row_ptr[row_num] ;
-
-//        const int data_num = row_ptr[row_num] / 1000 ;
-        int begin_loc;
-        int tile_num = data_num / (DELTA * OMEGA);
-        for (begin_loc = 0 ; begin_loc < data_num - DELTA * OMEGA + 1 ; begin_loc += DELTA * OMEGA ) {
-            row_index = spmv_func_unit( data_ptr + begin_loc, row_ptr + row_index, column_ptr + begin_loc , begin_loc, row_index );
-//            PRINTINT(row_index);
-        }
-        //handle the special case
-        //
-        
-        int rem_data = data_num % (DELTA * OMEGA);
-        if(rem_data > 0) {
-            tile_num++;
-            DATATYPE data_fill[ DELTA * OMEGA ];
-            int column_fill[DELTA * OMEGA];
-            int *row_fill = (int*) malloc(sizeof(int)*(row_num - row_index+1));
-            for( int i = 0 ; i < rem_data ; i++  ) {
-                data_fill[i] = data_ptr[ begin_loc + i ];
-                column_fill[i] = column_ptr[ begin_loc + i ];
-            }
-            for( int i = rem_data ; i < DELTA * OMEGA ; i++  ) {
-                data_fill[i] = 0;
-                column_fill[i] = column_ptr[ begin_loc + rem_data - 1 ];
-            }
-            for( int i = row_index ; i < row_num_ ; i++ ) {
-                row_fill[i-row_index] = row_ptr[i];
-            }
-            row_fill[ row_num_ - row_index ] = data_num - rem_data + DELTA * OMEGA;
-            row_index = spmv_func_unit( data_fill, row_fill, column_fill , begin_loc, row_index );
-        }
-        PRINTINT( tile_num );
-//        SCATTER( addr,res ,TrueVec_ );
-//        res = FReduce(res);
-//        Store( y_ptr,res);
-        Return( Zero_ );
-        LLVMVerifyModule(wrap(mod_ptr_), LLVMAbortProcessAction, &error_);
-        LLVMDisposeMessage(error_);
-
-        return;
-    }
-    void compiler_jit() {
-        error_ = NULL;
-        LLVMLinkInMCJIT();
-        LLVMInitializeNativeTarget();
-        LLVMInitializeNativeAsmPrinter();
-        if (LLVMCreateExecutionEngineForModule(&engine_, wrap(mod_ptr_), &error_) != 0) {
-            fprintf(stderr, "failed to create execution engine\n");
-            abort();
-        }
-        if (error_) {
-            fprintf(stderr, "error: %s\n", error_);
-            LLVMDisposeMessage(error_);
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    // Write out bitcode to file
-    void write_bit() {
-        if (LLVMWriteBitcodeToFile(wrap(mod_ptr_), "sum.bc") != 0) {
-            fprintf(stderr, "error writing bitcode to file, skipping\n");
-        }
-        return;
-    }
-    ~CSR5JIT() {
-        LLVMDisposeBuilder(wrap(builder_));
-        LLVMDisposeExecutionEngine(engine_);
-    }
-
-    FP get_function() {
-        return (FP)LLVMGetFunctionAddress(engine_, "sum");
-    }
-
-};
-void spvm_local(DATATYPE * y_ptr,const DATATYPE * x_ptr,const DATATYPE * data_ptr, const int * column_ptr, const int * row_ptr, const int row_num ) {
+void spmv_local(DATATYPE * y_ptr,const DATATYPE * x_ptr,const DATATYPE * data_ptr, const int * column_ptr, const int * row_ptr, const int row_num ) {
     for (int i = 0 ; i < row_num ; i++ ) {
         DATATYPE sum = 0;
         for (int j = row_ptr[i]; j < row_ptr[i+1] ; j++ ) {
             sum += x_ptr[column_ptr[j]] * data_ptr[j];
         }
-        y_ptr[i] = sum;
+        y_ptr[i] += sum;
     }
 }
-//#define DEBUG
-#define ROW_NUM 9
-#define COLUMN_NUM 8 
-csrSparseMatrix little_test( ) {
-    csrSparseMatrix csr_sparse_matrix;
 
-    const int row_num = ROW_NUM;
-    const int column_num = COLUMN_NUM;
-    int column_array[] = { 2,3,0,1, 2,3,4,5, 6,1,3,4, 5,1,3,4 ,
-                           6,7,0,3, 6,0,3,4, 6,7,2,0,1,2, 3,4,6,7, 
-                           };
-    int row_array[ROW_NUM+1] = {0,2,9,9,  13,18,21,26,  27,34 };
-    
-    DATATYPE A_array[34];
-    for( int i = 0 ; i < 34; i++ ) {
-#ifdef DEBUG
-        A_array[i] = 1;
-#else
-        A_array[i] = i;
-#endif
+void init_vec(DATATYPE * dence_vec_ptr, const int data_num , const DATATYPE data, const bool change = false ) {
+    if( change ) {
+        for( int i = 0 ; i < data_num ; i++ ) {
+            dence_vec_ptr[i] = i;
+        }
+    } else {
+        for( int i = 0 ; i < data_num ; i++ ) {
+            dence_vec_ptr[i] = data;
+        }
     }
-
-    csr_sparse_matrix.row_num = row_num;
-    csr_sparse_matrix.column_num = column_num;
-    csr_sparse_matrix.data_num = row_array[row_num];
-
-    const int data_num = csr_sparse_matrix.data_num;
-    csr_sparse_matrix.row_ptr = (int*)malloc(sizeof(int) * (row_num+1));
-
-    csr_sparse_matrix.column_ptr = (int*)malloc(sizeof(int) * (data_num));
-
-    csr_sparse_matrix.data_ptr = (DATATYPE*)malloc(sizeof(DATATYPE) * (data_num));
-    for( int i = 0 ; i < row_num + 1; i++ ) {
-        csr_sparse_matrix.row_ptr[i] = row_array[i];
-    }
-    for( int i = 0 ; i < data_num ; i++ ) {
-        csr_sparse_matrix.column_ptr[i] = column_array[i];
-
-        csr_sparse_matrix.data_ptr[i] = A_array[i];
-    }
-
-    return csr_sparse_matrix;
 }
-//#define LITTEL_CASE
-int main(int argc, char const *argv[]) {
+template<typename T>
+void check_equal(const T * v1, const T * v2, const int num ) {
+    bool flag = true;
+    for( int i = 0 ; i < num ; i++ ) {
+        if( (v1[i]-v2[i]) > 1e-6 || (v2[i]-v1[i]) > 1e-6 ) {
+            flag = false;
+            break;
+        }
+    }
+    if(flag) 
+        std::cout<<"Correct"<<std::endl;
+    else 
+        std::cout<<"False"<<std::endl;
+}
+
+template<typename T>
+void print_vec( T * data_ptr, const int num ) {
+    for( int i = 0 ; i < num ; i++ ) {
+        std::cout<< data_ptr[i] << " ";
+    }
+    std::cout<<std::endl;
+}
+#define LITTEL_CASE2
+int main( int argc , char const * argv[] ) {
     #ifdef LITTEL_CASE
-    csrSparseMatrix sparseMatrix = little_test();
-    csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
+        csrSparseMatrix sparseMatrix = little_test();
+        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
+    #elif defined LITTEL_CASE2
+        csrSparseMatrix sparseMatrix = little_test2(1024,1024);
+        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
     #else
-    if(argc <= 1 ) {
-        printf("Erro: You need to modify a file to read\n");
-        return 0;
-    }
-    printf("%s\n",argv[1]);
-    csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
+        if(argc <= 1 ) {
+            printf("Erro: You need to modify a file to read\n");
+            return 0;
+        }
+        csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
     #endif
     DATATYPE * data_ptr = sparseMatrixPtr->data_ptr;
     int * column_ptr = sparseMatrixPtr->column_ptr;
     int * row_ptr = sparseMatrixPtr->row_ptr;
+
+    const int data_num = sparseMatrixPtr->data_num;
     const int row_num = sparseMatrixPtr->row_num;
     const int column_num = sparseMatrixPtr->column_num;
-    const int data_num = sparseMatrixPtr->data_num;
-
-    DATATYPE * x_array = (DATATYPE*)malloc( sizeof( DATATYPE ) * column_num ) ;
-    DATATYPE * y_array = ( DATATYPE* ) malloc( sizeof(DATATYPE) * row_num );
-    DATATYPE * y_array_bak = ( DATATYPE* )malloc(sizeof(DATATYPE) * row_num);
-    for( int i = 0 ; i < column_num ; i++ ) {
-#ifdef DEBUG
-        x_array[i] = 1;
-#else
-        x_array[i] = i;
-#endif
-    }
-    for( int i = 0 ; i < row_num; i++ ) {
-        y_array[i] = 0;
-        y_array_bak[i] = 0;
-    }
-
-    CSR5JIT * csr5_jit_ptr = new CSR5JIT(DELTA,OMEGA);
-
-    Timer::startTimer("construct_compiler");
-    csr5_jit_ptr->spmv_func( data_ptr, column_ptr, row_ptr,row_num);
-    Timer::endTimer("construct_compiler");
-
-    Timer::printTimer("construct_compiler");
-
-//    csr5_jit_ptr->printMask();
-
-//    return 0;
-    Timer::startTimer("compiler");
-    csr5_jit_ptr->compiler_jit();
-    Timer::endTimer("compiler");
-
-    Timer::printTimer("compiler");
+    DATATYPE * x_array = SIMPLE_MALLOC( DATATYPE , column_num );
+    DATATYPE * y_array = SIMPLE_MALLOC( DATATYPE, row_num );
+    DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
     
-    Timer::startTimer("writebit");
-//    csr5_jit_ptr->write_bit();
+    init_vec( x_array, column_num , 1 ,true);
+    init_vec( y_array, row_num , 0 );
+    init_vec( y_array_bak, row_num , 0 );
+    const int OMEGA = 4;
+    const int DELTA = 16;
+//    const int DELTA = 2;
+    AnalyzeCSR5 analyze_CSR5(OMEGA,DELTA  );
+    analyze_CSR5.analyze( sparseMatrixPtr );
+    int * tile_row_index_ptr = analyze_CSR5.get_tile_row_index_ptr();
+    CSR5SuperBlockSet *csr5_super_block_set_ptr = new CSR5SuperBlockSet( analyze_CSR5.get_tile_dec_ptr(), analyze_CSR5.get_tile_dec_num(),tile_row_index_ptr );
+    //csr5_super_block_set_ptr->Analyse();
 
-    Timer::endTimer("writebit");
 
-    Timer::printTimer("writebit");
-//    llvm::errs() << "We just constructed this LLVM module:\n\n---------\n" << *csr5_jit_ptr->get_mod_ptr();
-
-    Timer::startTimer("getfunction");
-    FP spvm_func = csr5_jit_ptr->get_function();
-
-    Timer::endTimer("getfunction");
+    CSR5StateMent * csr5_statement_ptr = new CSR5StateMent( OMEGA, DELTA);
+    FuncStatement * func_ptr = csr5_statement_ptr->make( csr5_super_block_set_ptr->GetCSR5SuperBlockVec());
     
-    Timer::printTimer("getfunction");
-    Timer::startTimer("calculate");
 
-//    for( int i = 0 ; i < 2000; i+=2 )
-//        spvm_func( y_array + i , x_array );      
-//    printf("%d\n", spvm_func(y_array,x_array));
+//    StateMentPrint statement_print;
+//    statement_print.print( func_ptr->get_state() ,std::cout);
 
-    Timer::endTimer("calculate");
+    LLVMCodeGen codegen;
+    codegen.AddFunction( func_ptr );
+//    codegen.PrintModule();
+    LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
+    llvm_module_ptr->Init("llvm -mcpu=x86-64  -mattr=+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
 
-    Timer::printTimer("calculate");
-    Timer::startTimer("origin time");
-    spvm_local( y_array_bak, x_array, data_ptr , column_ptr, row_ptr, row_num ) ;
-    Timer::endTimer("origin time");
-    Timer::printTimer("origin time");
-    printf("%f %f\n",y_array[0],y_array_bak[0]);
-    for( int i = 0 ; i < row_num ; i++ ) {
-        if( fabs(y_array[i] - y_array_bak[i] ) > 1e-6) {
-            printf(" %d %f %f\n", i , y_array[i],y_array_bak[i]);
-            break;
-        }
-    }
-//    print_fvec( y_array , row_num  );
-//    print_fvec( y_array_bak, row_num);
-    printf("\n");
+    //using func = void( double*,double*,double*,int* );
+//    std::cout << llvm_module_ptr->GetSource("asm");
+    BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
 
+    Timer::startTimer("aot");
+    spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
+
+    Timer::endTimer("aot");
+
+    Timer::printTimer("aot");
+    printf("\ny_array \n");
+//    print_vec(y_array_bak,row_num);
+
+    Timer::startTimer("jit");
+    func(       y_array,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+
+    Timer::endTimer("jit");
+    Timer::printTimer("jit");
+//    print_vec(y_array,row_num); 
+    check_equal( y_array_bak, y_array, row_num );
+    return 0;
 }

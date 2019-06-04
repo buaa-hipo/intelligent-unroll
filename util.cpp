@@ -83,6 +83,15 @@ inline void print_vector_double(const double * a, const  int len) {
     printf("\n");
 }
 
+void print_vector_xchar(const unsigned char * a,const int len) {
+    int i;
+    for( i = 0 ; i < len ; i++) {
+        printf("%x ",a[i]);
+    }
+    printf("\n");
+
+}
+
 inline void print_vector_int(const int * a,const int len) {
     int i;
     for( i = 0 ; i < len ; i++) {
