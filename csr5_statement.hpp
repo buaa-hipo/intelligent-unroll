@@ -4,6 +4,18 @@
 #include "statement_print.hpp"
 #include "llvm_lib/llvm_log.h"
 #include "llvm_lib/llvm_print.hpp"
+    StateMent * CombinStatVec( std::vector<StateMent*> stat_vec ) {
+        if( stat_vec.size() == 0 ) { return Nop::make();}
+        else if(stat_vec.size() == 1) {return stat_vec[0];}
+        else {
+            StateMent * block_stat = Block::make( stat_vec[0],stat_vec[1]);
+            for( int i = 2 ; i < stat_vec.size(); i++ ) {
+                block_stat = Block::make( block_stat, stat_vec[i] );
+            }
+            return block_stat;
+        }
+    }
+
 class CSR5FastStateMent : StateMent{
     int omega_;
     int delta_;
@@ -21,25 +33,46 @@ class CSR5FastStateMent : StateMent{
     };
 
     StateMent * make( Varience * res, StateMent * begin, StateMent * space, StateMent* num ) {
-         Varience * index = new Varience(__int_vector_type) ;
-         Varience * gather_data = new Varience(__double_vector_type);
-         Varience * m_data = new Varience(__double_vector_type);
          bool true_vec[VECTOR4] = {true,true,true,true};
          Const * true_vec4 = new Const ( true_vec, VECTOR4 );
          Const * const_zero = new Const(0);
-         StateMent * for_stat = For::make( const_zero , space,num  );
-         StateMent * inc_i = dynamic_cast<For*>(for_stat)->get_var();
-         StateMent * index_stat = LetStat::make( index, Load::make( IncAddr::make(index4_addr_, Add::make(inc_i,begin) )));
+/*                StateMent * for_stat = For::make( const_zero , space,num  );
+                StateMent * inc_i = dynamic_cast<For*>(for_stat)->get_var();
+                Varience * index = new Varience(__int_vector_type) ;
+                Varience * gather_data = new Varience(__double_vector_type);
+                Varience * m_data = new Varience(__double_vector_type);
 
-         StateMent * mdata_load_stat = LetStat::make( m_data, Load::make( IncAddr::make(data4_addr_, Add::make(inc_i,begin))));
+                StateMent * index_stat = LetStat::make( index, Load::make( IncAddr::make(index4_addr_, Add::make(inc_i,begin) )));
 
-         StateMent * gather_stat = LetStat::make(gather_data, Gather::make( x_addr_v4_,index, true_vec4 ));
+                StateMent * mdata_load_stat = LetStat::make( m_data, Load::make( IncAddr::make(data4_addr_, Add::make(inc_i,begin))));
+
+                StateMent * gather_stat = LetStat::make(gather_data, Gather::make( x_addr_v4_,index, true_vec4 ));
         
-         StateMent * res_stat = LetStat::make(res,Add::make( res, Mul::make( gather_data, m_data )),false);
-         StateMent * block_stat = Block::make( index_stat,mdata_load_stat );
-         block_stat = Block::make( block_stat, gather_stat );
-         block_stat = Block::make( block_stat,res_stat );
-         dynamic_cast<For*>(for_stat)->SetState(block_stat);
+                StateMent * res_stat = LetStat::make(res,Add::make( res, Mul::make( gather_data, m_data )),false);
+                StateMent * block_stat = Block::make( index_stat,mdata_load_stat );
+                block_stat = Block::make( block_stat, gather_stat );
+                block_stat = Block::make( block_stat,res_stat );
+                dynamic_cast<For*>(for_stat)->SetState(block_stat);*/
+         std::vector<StateMent * > state_vec;
+         for( int i = 0 ; i < delta_ ; i++ ) {
+                Const * inc_i = new Const(i);
+                Varience * index = new Varience(__int_vector_type) ;
+                Varience * gather_data = new Varience(__double_vector_type);
+                Varience * m_data = new Varience(__double_vector_type);
+
+                StateMent * index_stat = LetStat::make( index, Load::make( IncAddr::make(index4_addr_, Add::make(inc_i,begin) )));
+                
+                StateMent * mdata_load_stat = LetStat::make( m_data, Load::make( IncAddr::make(data4_addr_, Add::make(inc_i,begin))));
+
+                StateMent * gather_stat = LetStat::make(gather_data, Gather::make( x_addr_v4_,index, true_vec4 ));
+        
+                StateMent * res_stat = LetStat::make(res,Add::make( res, Mul::make( gather_data, m_data )),false);
+                state_vec.push_back( index_stat );
+                state_vec.push_back( mdata_load_stat );
+                state_vec.push_back( gather_stat );
+                state_vec.push_back( res_stat );
+         }
+         StateMent * for_stat = CombinStatVec( state_vec );
          return for_stat;
     }
 };
@@ -91,17 +124,6 @@ class CSR5StateMent : StateMent{
 
         csr5_fast_statement_ptr_ = new CSR5FastStateMent( omega_, delta_, data4_addr_,index4_addr_,x4_addr_,x_addr_v4_);
     };
-    StateMent * CombinStatVec( std::vector<StateMent*> stat_vec ) {
-        if( stat_vec.size() == 0 ) { return Nop::make();}
-        else if(stat_vec.size() == 1) {return stat_vec[0];}
-        else {
-            StateMent * block_stat = Block::make( stat_vec[0],stat_vec[1]);
-            for( int i = 2 ; i < stat_vec.size(); i++ ) {
-                block_stat = Block::make( block_stat, stat_vec[i] );
-            }
-            return block_stat;
-        }
-    }
     FuncStatement * make( std::vector<CSR5SuperBlock*>& CSR5SuperBlockVec )  {
 
         std::vector<StateMent*> state_vec;
@@ -130,7 +152,7 @@ class CSR5StateMent : StateMent{
                 StateMent * outer_var_mult8_stat;
                 StateMent * combin_stat;
                 StateMent * y_addr_inc;
-                Varience * y_addr_inc_var = new Varience(__int);
+                Varience * y_addr_inc_var = new Varience(__double_ptr);
                 switch(tile_type) {
                     case FAST:
                        
@@ -147,8 +169,8 @@ class CSR5StateMent : StateMent{
                        
                        y_addr_inc = Load::make( IncAddr::make( tile_row_addr_ , Minus::make(outer_var, one_const) ));
                        
-                       state_vec.push_back(LetStat::make( y_addr_inc_var, y_addr_inc )) ;
-                       state_vec.push_back(Store::make( IncAddr::make(y_addr_,y_addr_inc_var),Reduce::make( fast_res )));
+                       state_vec.push_back(LetStat::make( y_addr_inc_var, IncAddr::make(y_addr_, y_addr_inc ))) ;
+                       state_vec.push_back(Store::make( y_addr_inc_var ,Add::make( Load::make( y_addr_inc_var ),Reduce::make( fast_res ))));
                        break; 
                     case SWITCH:
                         break;

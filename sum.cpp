@@ -141,9 +141,13 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array = SIMPLE_MALLOC( DATATYPE, row_num );
     DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
     
+    DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
+
     init_vec( x_array, column_num , 1 ,true);
     init_vec( y_array, row_num , 0 );
     init_vec( y_array_bak, row_num , 0 );
+
+    init_vec( y_array_time, row_num , 0 );
     const int OMEGA = 4;
     const int DELTA = 16;
 //    const int DELTA = 2;
@@ -172,16 +176,23 @@ int main( int argc , char const * argv[] ) {
     BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
 
     Timer::startTimer("aot");
-    spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
+        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
     Timer::endTimer("aot");
 
     Timer::printTimer("aot");
     printf("\ny_array \n");
+
+
+    func(       y_array,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
 //    print_vec(y_array_bak,row_num);
+    for( int i = 0 ; i < 50 ; i++ )
+        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
 
     Timer::startTimer("jit");
-    func(       y_array,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+     for( int i = 0 ; i < 100 ; i++ )
+        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+
 
     Timer::endTimer("jit");
     Timer::printTimer("jit");
