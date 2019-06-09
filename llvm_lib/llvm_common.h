@@ -33,7 +33,11 @@
 #include <llvm/Transforms/Utils/ModuleUtils.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
 
+#include <llvm/Transforms/Utils.h>
+#include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
@@ -53,8 +57,8 @@ extern "C" {
     //typedef int (*BackendPackedCFunc)(double*,double*); 
 
     #define DATATYPE double
-    typedef void(*BackendPackedCFunc)(DATATYPE *,DATATYPE*,DATATYPE*,int*,int*);
-   // typedef int (*BackendPackedCFunc)(); 
+//    typedef void(*BackendPackedCFunc)(DATATYPE *,DATATYPE*,DATATYPE*,int*,int*);
+    typedef int (*BackendPackedCFunc) ( float * , int * , int *, float * ,int *); 
 }
 /*!
  * \brief Initialize LLVM on this process,

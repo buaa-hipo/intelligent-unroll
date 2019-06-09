@@ -32,12 +32,16 @@ class LLVMCodeGen {
     std::unique_ptr<llvm::Module> mod_ptr_;
     std::unique_ptr<llvm::IRBuilder<>>  build_ptr_;
     std::unique_ptr<llvm::LLVMContext> ctx_ptr_;
+
+    std::unique_ptr<llvm::legacy::FunctionPassManager> TheFPM;
     llvm::Type*  t_int_;
 
     llvm::Type*  t_int8_;
     llvm::Type*  t_int64_ ;
     llvm::Type*  t_bool_ ;
     llvm::Type*  t_double_;
+
+    llvm::Type*  t_float_;
 
     llvm::Type*  t_int_p_ ;
     llvm::Type*  t_int64_p_;
@@ -46,10 +50,18 @@ class LLVMCodeGen {
     llvm::Type*  t_bool_p_;
     llvm::Type*  t_double_p_;
 
+    llvm::Type*  t_float_ptr_;
+
     llvm::Type* t_bool_vec_;
     llvm::Type* t_int_vec_;
     llvm::Type* t_int64_vec_;
     llvm::Type*  t_double_vec_;
+
+    llvm::Type*  t_float_vec_;
+
+    llvm::Type*  t_float_ptr_vec_;
+
+    llvm::Type*  t_float_vec_ptr_;
 
     llvm::Type* t_int_vec4_;
     llvm::Type*  t_double_vec4_;
@@ -64,18 +76,22 @@ class LLVMCodeGen {
     llvm::Type*  t_double_ptr_vec_;
 
     llvm::Constant *Zero_ ;
-
     llvm::Constant* FZeroVec_;
+
     llvm::Constant *FZero_ ;
+
+    llvm::Constant* DZeroVec_;
+
+    llvm::Constant *DZero_ ;
     llvm::Constant *One_ ;
     llvm::Constant *True_;
     llvm::Constant * Null_;
     llvm::Constant * ZeroVec_;
     llvm::Type * Type2LLVMType(const Type & type) {
-        if( type == __int_v4 ) { 
-            return llvm::VectorType::get( t_int_,VECTOR4 ); 
-        } else if( type == __double_v4 ){
-            return llvm::VectorType::get( t_double_, VECTOR4 );
+        if( type == __int_v ) { 
+            return llvm::VectorType::get( t_int_,VECTOR ); 
+        } else if( type == __double_v ){
+            return llvm::VectorType::get( t_double_, VECTOR );
         } else if( type == __int ) {
             return t_int_;
         } else if( type == __double ) {
@@ -86,15 +102,24 @@ class LLVMCodeGen {
             return t_double_->getPointerTo();
         } else if(type == __int_ptr) {
             return t_int_->getPointerTo();
-        } else if(type == __bool_v4){
+        } else if(type == __bool_v){
             return t_bool_vec_;
-        } else if(type == __double_v4_pointer){
-            return t_double_vec4_p_;
-        } else if( type == __int_v4_pointer) {
-            return t_int_vec4_p_;
-        
-        } else if(type == __double_pointer_v4) {
-            return t_double_ptr_vec4_;
+        } else if(type == __double_v_pointer){
+            return t_double_vec_p_;
+        } else if( type == __int_v_ptr) {
+            return t_int_vec_p_; 
+        } else if(type == __double_pointer_v) {
+            return t_double_ptr_vec_;
+        } else if( type == __float_v ){ 
+            return t_float_vec_;
+        } else if( type == __float ) {
+            return t_float_;
+        } else if( type == __float_v_ptr ) {
+            return t_float_vec_ptr_;
+        } else if( type == __float_ptr ) {
+            return t_float_ptr_;
+        } else if( type == __float_ptr_v ) {
+            return t_float_ptr_vec_;
         } else {
             LOG(FATAL) << type <<"type does not support ";
             return t_int_;
@@ -110,9 +135,17 @@ class LLVMCodeGen {
 
     LLVMCodeGen() {
 
-        ctx_ptr_ = std::make_unique<llvm::LLVMContext>();
-        mod_ptr_= std::make_unique<llvm::Module>("module",*ctx_ptr_);
-        build_ptr_ = std::make_unique<llvm::IRBuilder<>>(*ctx_ptr_);
+        ctx_ptr_ = llvm::make_unique<llvm::LLVMContext>();
+        mod_ptr_= llvm::make_unique<llvm::Module>("module",*ctx_ptr_);
+	TheFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>( mod_ptr_.get());
+	TheFPM->add( llvm::createPromoteMemoryToRegisterPass());
+	TheFPM->add( llvm::createInstructionCombiningPass() );
+	TheFPM->add( llvm::createReassociatePass());
+	TheFPM->add( llvm::createGVNPass());
+	TheFPM->add(llvm::createCFGSimplificationPass());
+	TheFPM->doInitialization();
+
+        build_ptr_ = llvm::make_unique<llvm::IRBuilder<>>(*ctx_ptr_);
         t_void_ = llvm::Type::getVoidTy(*ctx_ptr_);
 
         t_int_ =  llvm::Type::getInt32Ty(*ctx_ptr_);
@@ -121,6 +154,15 @@ class LLVMCodeGen {
         t_int64_ =  llvm::Type::getInt64Ty(*ctx_ptr_);
         t_bool_ =  llvm::Type::getInt1Ty(*ctx_ptr_);
         t_double_ =  llvm::Type::getDoubleTy(*ctx_ptr_);
+        t_float_ =  llvm::Type::getFloatTy(*ctx_ptr_);
+
+        t_float_ptr_ = t_float_->getPointerTo(); 
+
+        t_float_vec_ = llvm::VectorType::get( t_float_, lanes_ );
+
+        t_float_ptr_vec_ = llvm::VectorType::get( t_float_ptr_, lanes_ );
+
+        t_float_vec_ptr_ = t_float_vec_->getPointerTo();
 
         t_int_p_ = t_int_->getPointerTo();
         t_int8_p_ = t_int8_->getPointerTo();
@@ -149,9 +191,13 @@ class LLVMCodeGen {
         Zero_ = llvm::ConstantInt::get( t_int_ , 0);
 
         ZeroVec_ = llvm::ConstantVector::getSplat( lanes_, Zero_);
-        FZero_ = llvm::ConstantFP::get( t_double_ , 0);
+        FZero_ = llvm::ConstantFP::get( t_float_ , 0);
 
         FZeroVec_ = llvm::ConstantVector::getSplat( lanes_, FZero_);
+        DZero_ = llvm::ConstantFP::get( t_double_ , 0);
+
+        DZeroVec_ = llvm::ConstantVector::getSplat( lanes_, DZero_);
+
         One_ = llvm::ConstantInt::get( t_int_ , 1);
         //FOne_ = llvm::ConstantFP::get( t_double_ , 1);
         True_ = llvm::ConstantInt::get( t_bool_ , 1);
@@ -376,9 +422,12 @@ class LLVMCodeGen {
         Value * ptr_value = build_ptr_->CreateInBoundsGEP( addr_value, index_value);
         
         Value * mask_value = CodeGen( stat->get_mask() );
-        if( stat->get_type() == __double_v4 ) {         
+        if( stat->get_type() == __double_v ) {         
+            return  build_ptr_->CreateMaskedGather(  ptr_value , alinements_, mask_value , DZeroVec_);
+        } else if( stat->get_type() == __float_v ) {
+        
             return  build_ptr_->CreateMaskedGather(  ptr_value , alinements_, mask_value , FZeroVec_);
-        } else if( stat->get_type() == __int_v4 ) { 
+        } else if( stat->get_type() == __int_v ) { 
             return  build_ptr_->CreateMaskedGather(  ptr_value , alinements_, mask_value , ZeroVec_);
         } else {
             LOG(FATAL ) << "Unsupported type";
@@ -442,8 +491,9 @@ class LLVMCodeGen {
         Value * v1_value = CodeGen( v1);
         Type & type = stat->get_type();
         llvm::Type* llvmtype = Type2LLVMType(type);
-
-        if( v1->get_type() == __int && stat->get_type() == __double ) {
+        const Type & v1_type = v1->get_type();
+        const Type & stat_type = stat->get_type();
+        if( (v1_type == __int && (stat_type == __double|| stat_type == __float )) ||( v1_type == __int_v ) && ( stat_type == __double_v || stat_type == __float_v )  ) {
             return build_ptr_->CreateSIToFP(v1_value, llvmtype);
         } else {
         
@@ -459,7 +509,7 @@ class LLVMCodeGen {
         Value * v1_value = CodeGen( v1);
         StateMent * v2 = stat->get_v2();
         Value * v2_value = CodeGen( v2);
-        if(v1->get_type().get_data_type() == DOUBLE) {
+        if(v1->get_type().get_data_type() == DOUBLE || v1->get_type().get_data_type() == FLOAT ) {
 
             return build_ptr_->CreateFAdd( v1_value , v2_value);
             
@@ -476,12 +526,28 @@ class LLVMCodeGen {
         Value * v1_value = CodeGen( v1);
         StateMent * v2 = stat->get_v2();
         Value * v2_value = CodeGen( v2);
-        if(v1->get_type().get_data_type() == DOUBLE) {
+        if(v1->get_type().get_data_type() == DOUBLE || v1->get_type().get_data_type() == FLOAT ) {
 
             return build_ptr_->CreateFSub( v1_value , v2_value);
             
         } else if(v1->get_type().get_data_type() == INT) {
             return build_ptr_->CreateSub( v1_value , v2_value);
+        } else {
+            LOG(FATAL) << "the type does not support";
+        }
+        return Null_;
+    }
+    Value * CodeGen_(Div * stat) {
+        StateMent * v1 = stat->get_v1();
+        Value * v1_value = CodeGen( v1);
+        StateMent * v2 = stat->get_v2();
+        Value * v2_value = CodeGen( v2);
+        if(v1->get_type().get_data_type() == DOUBLE || v1->get_type().get_data_type() == FLOAT ) {
+
+            return build_ptr_->CreateFDiv( v1_value , v2_value);
+            
+        } else if(v1->get_type().get_data_type() == INT) {
+            return build_ptr_->CreateUDiv( v1_value , v2_value);
         } else {
             LOG(FATAL) << "the type does not support";
         }
@@ -493,7 +559,7 @@ class LLVMCodeGen {
         Value * v1_value = CodeGen( v1);
         StateMent * v2 = stat->get_v2();
         Value * v2_value = CodeGen( v2);
-        if(v1->get_type().get_data_type() == DOUBLE) {
+        if(v1->get_type().get_data_type() == DOUBLE || v1->get_type().get_data_type() == FLOAT ) {
 
             return build_ptr_->CreateFMul( v1_value , v2_value);
             
@@ -530,6 +596,7 @@ class LLVMCodeGen {
             SET_DISPATCH(Add);
             SET_DISPATCH(Mul);
 
+            SET_DISPATCH(Div);
             SET_DISPATCH(Minus);
             SET_DISPATCH(BroadCast);
 
@@ -565,7 +632,8 @@ class LLVMCodeGen {
         llvm::BasicBlock * entry = llvm::BasicBlock::Create(*ctx_ptr_,"entry",function );
         build_ptr_->SetInsertPoint( entry );
         CodeGen( state_ptr);
-        build_ptr_->CreateRetVoid();
+        build_ptr_->CreateRet(One_);
+	TheFPM->run( *function );
     }
     void PrintModule() {
         LLVMLOG(INFO) << *mod_ptr_;

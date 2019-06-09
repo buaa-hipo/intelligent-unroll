@@ -27,7 +27,9 @@ std::map<std::string,int> classname_typeid_map = {
     {"broadcast",19},
     {"print",20},
 
-    {"Minus",21}
+    {"Minus",21},
+
+    {"Div",22}
     //static constexpr const char* class_name_ = "broadcast";
 };
 int GetTypeId(std::string class_name) {
@@ -395,7 +397,8 @@ class LetStat:public StateMent{
     static StateMent * make(Varience * res,StateMent * expr, bool is_const=true) {
         const Type & res_type = res->get_type();
         const Type & expr_type = expr->get_type();
-        CHECK( res_type == expr_type ) << class_name_ <<": " <<res_type << " <-> " << expr_type << "does not match\n";
+        CHECK( res_type == expr_type ) << class_name_ <<": " <<res_type << " <-> " << expr_type << "does not match\n" <<
+            expr->get_class_name();
         StateMent * stat_ptr = new LetStat(res,expr,is_const);
         return stat_ptr;
     }
@@ -737,6 +740,7 @@ class CLASS_NAME : public Binary{ \
     }\
 }
 
+BINARY(Div);
 BINARY(Minus);
 BINARY(Mul);
 BINARY(Add);

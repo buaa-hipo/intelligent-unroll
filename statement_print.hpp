@@ -49,6 +49,7 @@ void print_( IncAddr * stat ,std::ostream&os) {
     os << "\n";
 }
 void print_(Nop * stat,std::ostream&os ) {
+    LOG(INFO) << "????";
     os << "nop\n";
 }
 void print_(Scatter * stat, std::ostream&os) {
@@ -132,6 +133,7 @@ void print_(BitCast * stat, std::ostream&os ) {
 PRINT_BINARY( Binary,"op" )
 PRINT_BINARY( Add, "+");
 
+PRINT_BINARY( Div, "/");
 PRINT_BINARY( Mul, "*");
 public:
 void print(StateMent * stat,std::ostream&os) {
@@ -160,6 +162,7 @@ void print(StateMent * stat,std::ostream&os) {
         SET_DISPATCH(Add);
         SET_DISPATCH(Mul);
 
+        SET_DISPATCH(Div);
         SET_DISPATCH(Minus);
         SET_DISPATCH(Print);
         SET_DISPATCH(BroadCast);

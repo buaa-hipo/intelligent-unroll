@@ -1,12 +1,14 @@
-CC=clang++
-CFLAGS=-O3 -ffast-math `llvm-config --cflags`  
+CC=g++
+#CFLAGS=-O3 -ffast-math `llvm-config --cflags`  
 
+CFLAGS=-std=c++11 -O3 -ffast-math  `llvm-config --cxxflags` -frtti 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
-LD=clang++ 
-LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -lLLVMDebugTool  -rdynamic 
+LD=g++ 
+LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11
+ 
 
 all: sum
-LKFILE= sum.o Timers.o csr_matrix.o llvm_common.o util.o
+LKFILE= sum.o Timers.o llvm_common.o util.o
 sum: $(LKFILE)
 	$(LD) $^ $(LDFLAGS) -o $@
 
@@ -15,13 +17,13 @@ sum.o: sum.cpp analyze_csr5.hpp statement.hpp csr5_statement.hpp type.hpp statem
 #	$(CC) $< -S $(CFLAGS) -o sum.S
 Timers.o:Timers.cpp
 	$(CC) $< -c -o $@
-csr_matrix.o:csr_matrix.cpp
-	$(CC) $< -c -o $@
+#csr_matrix.o:csr_matrix.cpp
+#	$(CC) $< -c -o $@
 util.o:util.cpp
 	$(CC) $< -c -o $@
 
 llvm_common.o:llvm_lib/llvm_common.cpp
-	$(CC) $< -c -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 sum.bc: sum
 	./sum 0 0
 

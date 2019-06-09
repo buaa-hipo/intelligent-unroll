@@ -63,7 +63,6 @@
 #include "csr_matrix.h"
 #include "Timers.hpp"
 #include <sstream>
-#include "analyze_csr5.hpp"
 #include "statement.hpp"
 #include "csr5_statement.hpp"
 #include "statement_print.hpp"
@@ -117,12 +116,9 @@ void print_vec( T * data_ptr, const int num ) {
 }
 #define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
-    #ifdef LITTEL_CASE
-        csrSparseMatrix sparseMatrix = little_test();
-        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
-    #elif defined LITTEL_CASE2
-        csrSparseMatrix sparseMatrix = little_test2(1024,1024);
-        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
+    #if defined LITTEL_CASE2
+        PageRankStructure page_rank_structure = little_test2();
+        PageRankStructurePtr  page_rank_structure_ptr = & page_rank_structure;
     #else
         if(argc <= 1 ) {
             printf("Erro: You need to modify a file to read\n");
@@ -130,73 +126,54 @@ int main( int argc , char const * argv[] ) {
         }
         csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
     #endif
-    DATATYPE * data_ptr = sparseMatrixPtr->data_ptr;
-    int * column_ptr = sparseMatrixPtr->column_ptr;
-    int * row_ptr = sparseMatrixPtr->row_ptr;
+   
+    PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
+    page_rank_statement_ptr->make( page_rank_structure_ptr );
+    FuncStatement * func_ptr = page_rank_statement_ptr->get_function(); 
+    StateMentPrint statement_print;
 
-    const int data_num = sparseMatrixPtr->data_num;
-    const int row_num = sparseMatrixPtr->row_num;
-    const int column_num = sparseMatrixPtr->column_num;
-    DATATYPE * x_array = SIMPLE_MALLOC( DATATYPE , column_num );
-    DATATYPE * y_array = SIMPLE_MALLOC( DATATYPE, row_num );
-    DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
-    
-    DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
-
-    init_vec( x_array, column_num , 1 ,true);
-    init_vec( y_array, row_num , 0 );
-    init_vec( y_array_bak, row_num , 0 );
-
-    init_vec( y_array_time, row_num , 0 );
-    const int OMEGA = 4;
-    const int DELTA = 16;
-//    const int DELTA = 2;
-    AnalyzeCSR5 analyze_CSR5(OMEGA,DELTA  );
-    analyze_CSR5.analyze( sparseMatrixPtr );
-    int * tile_row_index_ptr = analyze_CSR5.get_tile_row_index_ptr();
-    CSR5SuperBlockSet *csr5_super_block_set_ptr = new CSR5SuperBlockSet( analyze_CSR5.get_tile_dec_ptr(), analyze_CSR5.get_tile_dec_num(),tile_row_index_ptr );
-    //csr5_super_block_set_ptr->Analyse();
-
-
-    CSR5StateMent * csr5_statement_ptr = new CSR5StateMent( OMEGA, DELTA);
-    FuncStatement * func_ptr = csr5_statement_ptr->make( csr5_super_block_set_ptr->GetCSR5SuperBlockVec());
-    
-
-//    StateMentPrint statement_print;
-//    statement_print.print( func_ptr->get_state() ,std::cout);
+    statement_print.print( func_ptr->get_state() ,std::cout);
 
     LLVMCodeGen codegen;
     codegen.AddFunction( func_ptr );
 //    codegen.PrintModule();
     LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
-    llvm_module_ptr->Init("llvm -mcpu=x86-64  -mattr=+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
+    llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
 
     //using func = void( double*,double*,double*,int* );
 //    std::cout << llvm_module_ptr->GetSource("asm");
     BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
 
     Timer::startTimer("aot");
-        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
+//        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
     Timer::endTimer("aot");
 
     Timer::printTimer("aot");
     printf("\ny_array \n");
 
+    float * sum = page_rank_structure_ptr->sum;
 
-    func(       y_array,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+    float * rank = page_rank_structure_ptr->rank;
+
+    int * n1 = page_rank_structure_ptr->n1;
+
+    int * n2 = page_rank_structure_ptr->n2;
+    int * nneibor = page_rank_structure_ptr->nneibor;
+
+    func( sum,n1,n2,rank,nneibor ); 
 //    print_vec(y_array_bak,row_num);
-    for( int i = 0 ; i < 50 ; i++ )
-        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+//    for( int i = 0 ; i < 50 ; i++ )
+//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
 
     Timer::startTimer("jit");
-     for( int i = 0 ; i < 100 ; i++ )
-        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
+//     for( int i = 0 ; i < 100 ; i++ )
+//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
 
 
     Timer::endTimer("jit");
     Timer::printTimer("jit");
 //    print_vec(y_array,row_num); 
-    check_equal( y_array_bak, y_array, row_num );
+//    check_equal( y_array_bak, y_array, row_num );
     return 0;
 }
