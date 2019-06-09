@@ -139,9 +139,10 @@ int main( int argc , char const * argv[] ) {
 //    codegen.PrintModule();
     LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
     llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
-
+    
+    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
     //using func = void( double*,double*,double*,int* );
-//    std::cout << llvm_module_ptr->GetSource("asm");
+    //std::cout << llvm_module_ptr->GetSource("asm");
     BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
 
     Timer::startTimer("aot");
@@ -160,8 +161,26 @@ int main( int argc , char const * argv[] ) {
 
     int * n2 = page_rank_structure_ptr->n2;
     int * nneibor = page_rank_structure_ptr->nneibor;
+    int nedges = page_rank_structure_ptr->nedges;
+    int nnodes = page_rank_structure_ptr->nnodes;
+    float * sum_bak = SIMPLE_MALLOC( float, nnodes );
+    for( int i = 0 ; i < nnodes ; i++ )
+        sum_bak[i] = sum[i];
 
-    func( sum,n1,n2,rank,nneibor ); 
+    print_vec( n1, nedges );
+
+    print_vec( n2, nedges );
+
+    for(int j=0;j<nedges;j++) {
+      int nx = n1[j];
+      int ny = n2[j];
+      sum_bak[ny] += rank[nx] / nneibor[nx];
+    }
+    print_vec( sum_bak, nnodes );    
+    fflush(stdout);
+    func( sum,n1,n2,rank,nneibor );
+
+    print_vec( sum, nnodes );    
 //    print_vec(y_array_bak,row_num);
 //    for( int i = 0 ; i < 50 ; i++ )
 //        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 

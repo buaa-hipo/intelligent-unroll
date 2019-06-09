@@ -15,11 +15,13 @@ PageRankStructure little_test2( ) {
     float * sum = SIMPLE_MALLOC( float , nnodes );
     
     float * rank = SIMPLE_MALLOC( float, nnodes );
+    page_rank_structure.nedges = nedges;
+    page_rank_structure.nnodes = nnodes; 
+
     page_rank_structure.n1 = n1;
     page_rank_structure.n2 = n2;
     page_rank_structure.nneibor = nneibor;
-    page_rank_structure.nedges = nedges;
-    page_rank_structure.nnodes = nnodes;
+    page_rank_structure.sum = sum;
     page_rank_structure.rank = rank;
     for( int i = 0 ; i < nedges ; i++) {
         n1[i] = i;

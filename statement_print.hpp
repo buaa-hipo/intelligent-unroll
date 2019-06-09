@@ -127,7 +127,6 @@ void print_(BitCast * stat, std::ostream&os ) {
         print(stat->get_v1(),os); \
         os << " " OP " " ;\
         print(stat->get_v2(),os);\
-        os << "\n";\
     }
 
 PRINT_BINARY( Binary,"op" )
