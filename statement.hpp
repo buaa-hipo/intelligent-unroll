@@ -3,43 +3,12 @@
 #include "type.hpp"
 #include "log.h"
 #include <vector>
+#include <sstream>
+#include <map>
 
-std::map<std::string,int> classname_typeid_map = {
-    {"statement",0},
-    {"block",1},
-    {"for",2},
-    {"varience",3},
-    {"const",4},
-    {"let_stat",5},
-    {"inc_addr",6},
-    {"nop",7},
-    {"scatter",8},
-    {"init",9},
-    {"gather",10},
-    {"load",11},
-    {"store",12},
-    {"shuffle",13},
-    {"reduce",14},
-    {"bitcast",15},
-    {"binary",16},
-    {"Add",17},
-    {"Mul",18},
-    {"broadcast",19},
-    {"print",20},
-
-    {"Minus",21},
-
-    {"Div",22}
-    //static constexpr const char* class_name_ = "broadcast";
-};
-int GetTypeId(std::string class_name) {
-    auto typeid_find = classname_typeid_map.find(class_name);
-    if( typeid_find == classname_typeid_map.end()) {
-        LOG(FATAL)<<"Can not find " << class_name << "\n";
-        exit(1);
-    } 
-    return typeid_find->second;
-}
+#include <set>
+extern std::map<std::string,int>  classname_typeid_map;
+int GetTypeId( std::string class_name );
 class StateMent {
     protected:
     Type type_;
@@ -63,7 +32,7 @@ class Varience :public StateMent{
     std::set<std::string> name_set_;
     std::string get_unique_name() {
         static int name_index = 0;
-        stringstream ss ;
+        std::stringstream ss ;
         ss << "__" << name_index;
         name_index++;
         auto name_set_find_ = name_set_.find( ss.str() );
@@ -324,7 +293,7 @@ class Const : public Expr{
         return type_.str();
     }
     template<typename class_name>
-    void print_data(class_name* tmp_d, int lanes, stringstream &ss ) {
+    void print_data(class_name* tmp_d, int lanes, std::stringstream &ss ) {
         int i;
         for( i = 0; i < lanes - 1; i++  ) {
             ss << tmp_d[i] << ","; 
@@ -332,7 +301,7 @@ class Const : public Expr{
         ss << tmp_d[i];
     }
     std::string get_data_str() {
-        stringstream ss;
+        std::stringstream ss;
         double * tmp_d;
         int * tmp_i;
         const int lanes = type_.get_lanes();
@@ -644,6 +613,61 @@ class BroadCast : public Expr {
     }
     StateMent * get_v1() {
         return v1_;
+    }
+
+};
+class DetectConflict : public Expr {
+
+    StateMent * index_;
+    protected:
+
+    DetectConflict( StateMent * index ) : index_(index) {
+        const int lanes = index_->get_type().get_lanes();
+        type_ = Type( BOOL ,lanes );
+    }
+    public:
+    static constexpr const char* class_name_ = "detect_conflict";
+    static StateMent * make( StateMent * index ) {
+        StateMent * stat_ptr = new DetectConflict( index);
+        return stat_ptr;
+    }
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    StateMent * get_index() {
+        return index_;
+    }
+
+};
+
+class ComplexReduce : public Expr {
+    StateMent * v1_;
+
+    StateMent * index_;
+    int mask_;
+    protected:
+
+    ComplexReduce( StateMent * v1 , StateMent * index , int mask) : v1_(v1),index_(index),mask_(mask) {
+        Type * type_ptr_tmp = &v1_->get_type();
+        type_ = *type_ptr_tmp;
+    }
+    public:
+    static constexpr const char* class_name_ = "complex_reduce";
+    static StateMent * make( StateMent * v1, StateMent * index, int mask = 0xffff ) {
+        StateMent * stat_ptr = new ComplexReduce( v1, index, mask );
+        return stat_ptr;
+    }
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    StateMent * get_v1() {
+        return v1_;
+    }
+    StateMent * get_index() {
+        return index_;
+    }
+    int get_mask() {
+        return mask_;
     }
 
 };

@@ -5,6 +5,8 @@ typedef enum {FLOAT, DOUBLE, INT, VOID,BOOL } DataType;
 #define NOT_VEC (1)
 #include <sstream>
 #include <string>
+#include <sstream>
+#include "log.h"
 class Type {
     DataType data_type_;
     int lanes_;
@@ -36,7 +38,7 @@ class Type {
     }
     std::string str()const {
         
-        stringstream ss ;
+        std::stringstream ss ;
         std::string pointer = std::string();
         if( pointer2type_ == nullptr ) {
         switch( data_type_) {
@@ -98,56 +100,34 @@ class Type {
         return pointer2type_ != nullptr;
     }
 };
-Type __void = Type(VOID,NOT_VEC);
-Type __int = Type( INT,NOT_VEC );
-Type __float = Type( FLOAT, NOT_VEC );
-Type __double = Type( DOUBLE,  NOT_VEC );
-Type __double_ptr = Type( &__double,NOT_VEC);
-Type __int_ptr = Type( &__int,NOT_VEC);
-Type __float_ptr = Type( &__float, NOT_VEC);
+extern Type __void ;
+extern Type __int ;
+extern Type __float ;
+extern Type __double;
+ extern Type __double_ptr;
+ extern Type __int_ptr ;
+ extern Type __float_ptr ;
 
-Type __double_v4 = Type( DOUBLE,VECTOR4 );
-Type __bool_v4 = Type( BOOL, VECTOR4 );
-Type __int_v4 = Type( INT,VECTOR4 );
-Type __double_v4_pointer = Type( &__double_v4, NOT_VEC );
-Type __int_v4_pointer = Type(&__int_v4, NOT_VEC);
 
-Type __double_pointer_v4 = Type( &__double, VECTOR4 );
 
-Type __double_v8 = Type( DOUBLE,VECTOR8 );
-Type __bool_v8 = Type( BOOL, VECTOR8);
-Type __int_v8 = Type( INT,VECTOR8 );
+ extern Type __float_v;
+ extern Type __float_v_ptr;
+ extern Type __double_pointer_v ;
 
-Type __double_v8_pointer = Type( &__double_v8, NOT_VEC );
-Type __int_v8_pointer = Type(&__int_v8, NOT_VEC);
-Type __double_pointer_v8 = Type( &__double, VECTOR8 );
+ extern Type __int_vector_type;
+ extern Type __double_vector_type;
+ extern Type __double_v;
+ extern Type __bool_v ;
+ extern Type __int_v ;
+ extern Type __double_v_pointer;
+ extern Type __int_v_ptr;
+ extern Type __float_ptr_v ;
 
-Type __int_v16 = Type(INT,VECTOR16);
+ extern Type __int_ptr_v;
 
-Type __bool_v16 = Type( BOOL, VECTOR16);
-Type __float_v16 = Type(FLOAT,VECTOR16);
-Type __float_v16_ptr = Type( &__float_v16, NOT_VEC );
 
-Type __float_ptr_v16 = Type( &__float, VECTOR16 );
 
-Type __int_ptr_v16 = Type( &__int, VECTOR16 );
 
-Type __int_v16_ptr = Type( &__int_v16, NOT_VEC );
-
-Type __float_v = __float_v16;
-Type __float_v_ptr = __float_v16_ptr;
-Type __double_pointer_v = __double_pointer_v8;
-
-Type __int_vector_type = __int_v8;
-Type __double_vector_type = __double_v8;
-Type __double_v = __double_v8;
-Type __bool_v = __bool_v16;
-Type __int_v = __int_v16;
-Type __double_v_pointer = __double_v8_pointer;
-Type __int_v_ptr = __int_v16_ptr;
-Type __float_ptr_v = __float_ptr_v16;
-
-Type __int_ptr_v = __int_ptr_v16;
 
 
 #endif

@@ -8,7 +8,7 @@ LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executioneng
  
 
 all: sum
-LKFILE= sum.o Timers.o llvm_common.o util.o
+LKFILE= sum.o Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o
 sum: $(LKFILE)
 	$(LD) $^ $(LDFLAGS) -o $@
 
@@ -22,8 +22,24 @@ Timers.o:Timers.cpp
 util.o:util.cpp
 	$(CC) $< -c -o $@
 
+llvm_codegen.o:llvm_lib/llvm_codegen.cpp llvm_lib/llvm_codegen.hpp
+	$(CC) $(CFLAGS) $< -c -o $@
 llvm_common.o:llvm_lib/llvm_common.cpp
 	$(CC) $(CFLAGS) $< -c -o $@
+
+type.o:type.cpp type.hpp
+	$(CC) $(CFLAGS) $< -c -o $@
+statement.o:statement.cpp
+	$(CC) $(CFLAGS) $< -c -o $@
+
+csr_matrix.o:csr_matrix.cpp
+	$(CC) $(CFLAGS) $< -c -o $@
+
+statement_print.o:statement_print.cpp
+	$(CC) $(CFLAGS) $< -c -o $@
+
+csr5_statement.o:csr5_statement.cpp
+	$(CC) -std=c++11  $< -c -o $@
 sum.bc: sum
 	./sum 0 0
 

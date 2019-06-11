@@ -26,10 +26,11 @@ PageRankStructure little_test2( ) {
     for( int i = 0 ; i < nedges ; i++) {
         n1[i] = i;
         n2[i] = i;
-    } 
+    }
+    n2[0] = 2;
     for( int i = 0 ; i < nnodes ; i++ ) {
-        nneibor[i] = i;
-        rank[i] = i;
+        nneibor[i] = i+1;
+        rank[i] = i+1;
         sum[i] = 0;
     }
 

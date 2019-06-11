@@ -96,9 +96,9 @@ template<typename T>
 void check_equal(const T * v1, const T * v2, const int num ) {
     bool flag = true;
     for( int i = 0 ; i < num ; i++ ) {
-        if( (v1[i]-v2[i]) > 1e-6 || (v2[i]-v1[i]) > 1e-6 ) {
+        if( (v1[i]-v2[i]) > 1e-3 || (v2[i]-v1[i]) > 1e-3 ) {
             flag = false;
-            break;
+            std::cout<< i<< " "  << v1[i]  << " "<< v2[i]<<"\n";
         }
     }
     if(flag) 
@@ -114,7 +114,7 @@ void print_vec( T * data_ptr, const int num ) {
     }
     std::cout<<std::endl;
 }
-#define LITTEL_CASE2
+//#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
     #if defined LITTEL_CASE2
         PageRankStructure page_rank_structure = little_test2();
@@ -124,34 +124,50 @@ int main( int argc , char const * argv[] ) {
             printf("Erro: You need to modify a file to read\n");
             return 0;
         }
-        csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
+        PageRankStructurePtr page_rank_structure_ptr = test_read( argv[1]);
     #endif
    
     PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
+    LOG(INFO) << "Before Make\n";
+    fflush(stdout);
+
     page_rank_statement_ptr->make( page_rank_structure_ptr );
+    LOG(INFO) << "After Make\n";
+    fflush(stdout);
+    LOG(INFO) << "Before GetFunction\n";
+    fflush(stdout);
+
     FuncStatement * func_ptr = page_rank_statement_ptr->get_function(); 
     StateMentPrint statement_print;
+    LOG(INFO) << "After GetFunction\n";
+    fflush(stdout);
 
-    statement_print.print( func_ptr->get_state() ,std::cout);
+//    statement_print.print( func_ptr->get_state() ,std::cout);
 
     LLVMCodeGen codegen;
     codegen.AddFunction( func_ptr );
+    LOG(INFO) << "After AddFunction\n";
+    fflush(stdout);
+
 //    codegen.PrintModule();
     LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
+     LOG(INFO) << "After New module\n";
+    fflush(stdout);
+
     llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
-    
-    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
+     LOG(INFO) << "After Init module\n";
+    fflush(stdout);
+   
+//    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
     //using func = void( double*,double*,double*,int* );
-    //std::cout << llvm_module_ptr->GetSource("asm");
+    std::cout << llvm_module_ptr->GetSource("asm");
+    LOG(INFO) << "Before Get Function\n";
+    fflush(stdout);
     BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
+    LOG(INFO) << "After Get Function\n";
+    fflush(stdout);
 
-    Timer::startTimer("aot");
-//        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
-
-    Timer::endTimer("aot");
-
-    Timer::printTimer("aot");
-    printf("\ny_array \n");
+    //    printf("\ny_array \n");
 
     float * sum = page_rank_structure_ptr->sum;
 
@@ -164,35 +180,59 @@ int main( int argc , char const * argv[] ) {
     int nedges = page_rank_structure_ptr->nedges;
     int nnodes = page_rank_structure_ptr->nnodes;
     float * sum_bak = SIMPLE_MALLOC( float, nnodes );
+
+    float * sum_time = SIMPLE_MALLOC( float, nnodes );
     for( int i = 0 ; i < nnodes ; i++ )
         sum_bak[i] = sum[i];
+    for( int i = 0 ; i < nnodes ; i++ )
+        sum_time[i] = sum[i];
 
-    print_vec( n1, nedges );
+//    print_vec( n1, nedges );
 
-    print_vec( n2, nedges );
+//    print_vec( n2, nedges );
 
+    LOG(INFO) << "Before Calc\n";
+
+    fflush(stdout);
+    Timer::startTimer("aot");
     for(int j=0;j<nedges;j++) {
       int nx = n1[j];
       int ny = n2[j];
       sum_bak[ny] += rank[nx] / nneibor[nx];
     }
-    print_vec( sum_bak, nnodes );    
-    fflush(stdout);
-    func( sum,n1,n2,rank,nneibor );
+    Timer::endTimer("aot");
 
-    print_vec( sum, nnodes );    
+    Timer::printTimer("aot");
+
+    LOG(INFO) << "After Calc\n";
+
+    fflush(stdout);
+//    print_vec( sum_bak, nnodes );    
+//    fflush(stdout);
+
+//    print_vec( sum, nnodes );    
 //    print_vec(y_array_bak,row_num);
 //    for( int i = 0 ; i < 50 ; i++ )
 //        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
 
+    LOG(INFO) << "Before Calc\n";
+
+    fflush(stdout);
+
+    func( sum,n1,n2,rank,nneibor );
+    for( int i = 0 ; i < 50 ; i++ )
+        func( sum_time,n1,n2,rank,nneibor );
     Timer::startTimer("jit");
 //     for( int i = 0 ; i < 100 ; i++ )
 //        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
-
+    for( int i = 0 ; i < 1000; i++ )
+        func( sum_time,n1,n2,rank,nneibor );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit");
+
+    LOG(INFO) << "After Calc\n";
 //    print_vec(y_array,row_num); 
-//    check_equal( y_array_bak, y_array, row_num );
+    check_equal( sum,sum_bak,nnodes );
     return 0;
 }
