@@ -42,6 +42,8 @@ class Timer
         ~Timer();
         static void printTimer();
         static void printTimer(string in) ;
+
+        static void printTimer(string in,int times) ;
         void static startTimer_asm(string in) ;
         static void endTimer_asm(string in);
         static void printTimer_asm();

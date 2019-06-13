@@ -68,6 +68,7 @@
 #include "statement_print.hpp"
 #include "small_case.hpp"
 #include "llvm_lib/llvm_codegen.hpp"
+#include "analyze.h"
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
@@ -128,47 +129,6 @@ int main( int argc , char const * argv[] ) {
     #endif
    
     PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
-    LOG(INFO) << "Before Make\n";
-    fflush(stdout);
-
-    page_rank_statement_ptr->make( page_rank_structure_ptr );
-    LOG(INFO) << "After Make\n";
-    fflush(stdout);
-    LOG(INFO) << "Before GetFunction\n";
-    fflush(stdout);
-
-    FuncStatement * func_ptr = page_rank_statement_ptr->get_function(); 
-    StateMentPrint statement_print;
-    LOG(INFO) << "After GetFunction\n";
-    fflush(stdout);
-
-//    statement_print.print( func_ptr->get_state() ,std::cout);
-
-    LLVMCodeGen codegen;
-    codegen.AddFunction( func_ptr );
-    LOG(INFO) << "After AddFunction\n";
-    fflush(stdout);
-
-//    codegen.PrintModule();
-    LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
-     LOG(INFO) << "After New module\n";
-    fflush(stdout);
-
-    llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
-     LOG(INFO) << "After Init module\n";
-    fflush(stdout);
-   
-//    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
-    //using func = void( double*,double*,double*,int* );
-    std::cout << llvm_module_ptr->GetSource("asm");
-    LOG(INFO) << "Before Get Function\n";
-    fflush(stdout);
-    BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
-    LOG(INFO) << "After Get Function\n";
-    fflush(stdout);
-
-    //    printf("\ny_array \n");
-
     float * sum = page_rank_structure_ptr->sum;
 
     float * rank = page_rank_structure_ptr->rank;
@@ -182,7 +142,61 @@ int main( int argc , char const * argv[] ) {
     float * sum_bak = SIMPLE_MALLOC( float, nnodes );
 
     float * sum_time = SIMPLE_MALLOC( float, nnodes );
-    for( int i = 0 ; i < nnodes ; i++ )
+
+
+    int nedges_pack_num = nedges / VECTOR;
+    ShuffleIndexPtr shuffle_index_ptr = (ShuffleIndexPtr) _mm_malloc(sizeof(ShuffleIndex)*4*nedges_pack_num,64);
+
+    int *  mask_vec = (int*)malloc(sizeof(int)*nedges_pack_num);
+    for(int j=0 , j_pack = 0 ;j_pack < nedges_pack_num ;j_pack++, j+=VECTOR) {
+        int *ny = &n2[j];
+        int num = analyze( ny , &shuffle_index_ptr[j_pack*4]);
+        mask_vec[j_pack] = num;
+    }
+
+    LOG(INFO) << "Before Make\n";
+    fflush(stdout);
+
+    page_rank_statement_ptr->make( page_rank_structure_ptr, mask_vec );
+    LOG(INFO) << "After Make\n";
+    fflush(stdout);
+    LOG(INFO) << "Before GetFunction\n";
+    fflush(stdout);
+
+    FuncStatement * func_ptr = page_rank_statement_ptr->get_function(); 
+    StateMentPrint statement_print;
+    LOG(INFO) << "After GetFunction\n";
+    fflush(stdout);
+
+//    statement_print.print( func_ptr->get_state() ,std::cout);
+    LOG(INFO) << "Before AddFunction\n";
+    fflush(stdout);
+
+    LLVMCodeGen codegen;
+    codegen.AddFunction( func_ptr );
+    LOG(INFO) << "After AddFunction\n";
+
+//    codegen.PrintModule();
+    LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
+     LOG(INFO) << "After New module\n";
+    fflush(stdout);
+
+    llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
+     LOG(INFO) << "After Init module\n";
+    fflush(stdout);
+   
+//    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
+    //using func = void( double*,double*,double*,int* );
+//    std::cout << llvm_module_ptr->GetSource("asm");
+    LOG(INFO) << "Before Get Function\n";
+    fflush(stdout);
+    BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
+    LOG(INFO) << "After Get Function\n";
+    fflush(stdout);
+
+    //    printf("\ny_array \n");
+
+        for( int i = 0 ; i < nnodes ; i++ )
         sum_bak[i] = sum[i];
     for( int i = 0 ; i < nnodes ; i++ )
         sum_time[i] = sum[i];
@@ -219,17 +233,17 @@ int main( int argc , char const * argv[] ) {
 
     fflush(stdout);
 
-    func( sum,n1,n2,rank,nneibor );
+    func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
     for( int i = 0 ; i < 50 ; i++ )
-        func( sum_time,n1,n2,rank,nneibor );
+        func( sum_time,n1,n2,rank,nneibor ,(char*)shuffle_index_ptr);
     Timer::startTimer("jit");
 //     for( int i = 0 ; i < 100 ; i++ )
 //        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
     for( int i = 0 ; i < 1000; i++ )
-        func( sum_time,n1,n2,rank,nneibor );
+        func( sum_time,n1,n2,rank,nneibor ,(char*)shuffle_index_ptr);
 
     Timer::endTimer("jit");
-    Timer::printTimer("jit");
+    Timer::printTimer("jit",1000);
 
     LOG(INFO) << "After Calc\n";
 //    print_vec(y_array,row_num); 

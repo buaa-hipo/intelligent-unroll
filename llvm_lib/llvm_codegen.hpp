@@ -39,6 +39,8 @@ class LLVMCodeGen {
 
     Function * conflict_512_;
 
+    Function * permvar_float_512_;
+    Function * permvar_int_512_;
     llvm::Type*  t_int_;
 
     llvm::Type*  t_int8_;
@@ -53,7 +55,7 @@ class LLVMCodeGen {
     llvm::Type*  t_int_p_ ;
     llvm::Type*  t_int64_p_;
 
-    llvm::Type*  t_int8_p_ ;
+    llvm::Type*  t_int8_ptr_ ;
     llvm::Type*  t_bool_p_;
     llvm::Type*  t_double_p_;
 
@@ -64,12 +66,14 @@ class LLVMCodeGen {
     llvm::Type* t_int64_vec_;
     llvm::Type*  t_double_vec_;
 
+    llvm::Type* t_int8_vec_;
     llvm::Type*  t_float_vec_;
 
     llvm::Type*  t_float_ptr_vec_;
 
     llvm::Type*  t_float_vec_ptr_;
 
+    llvm::Type* t_int8_vec_ptr_;
     llvm::Type* t_int_vec4_;
     llvm::Type*  t_double_vec4_;
     llvm::Type* t_void_;
@@ -89,6 +93,7 @@ class LLVMCodeGen {
 
     llvm::Constant* DZeroVec_;
 
+    llvm::Constant * SixTeenVec_;
     llvm::Constant *DZero_ ;
     llvm::Constant *One_ ;
 
@@ -97,16 +102,24 @@ class LLVMCodeGen {
     llvm::Constant * Null_;
     llvm::Constant * ZeroVec_;
     llvm::Constant * FFFF_;
+    llvm::Constant * SixTeen_;
+
     std::map< Varience*,Value*> var_val_map_;
     llvm::Type * Type2LLVMType(const Type & type) ;
 
     llvm::Value * LLVMBroadCast( llvm::Value * value, const int lanes) ;
     public:
     std::unique_ptr<llvm::Module> get_mod() {
-        return std::move(mod_ptr_);
+        if(mod_ptr_)
+            return std::move(mod_ptr_);
+        else 
+            LOG(FATAL) << "mod ptr is null";
     }
     std::unique_ptr<llvm::LLVMContext> get_ctx() {
-        return std::move(ctx_ptr_);
+        if( ctx_ptr_ ) 
+            return std::move(ctx_ptr_);
+        else 
+            LOG(FATAL) << "ctx ptr is null";
     }
 
     template<typename T> 

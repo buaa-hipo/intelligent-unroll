@@ -24,6 +24,7 @@ class LLVMModule  {
     }
   }
   LLVMModule(std::unique_ptr<llvm::Module> mod_ptr, std::unique_ptr<llvm::LLVMContext> ctx_ptr) {
+        
         module_ = std::move(mod_ptr);
         ctx_ = std::move(ctx_ptr);
   }
@@ -94,8 +95,7 @@ class LLVMModule  {
 
     std::string verify_errors_storage;
     llvm::raw_string_ostream verify_errors(verify_errors_storage);
-    //LLVMLOG(INFO) << *module_;
-
+    
     CHECK(!llvm::verifyModule(*module_, &verify_errors))
         << "LLVM module verification failed with the following errors: \n"
         << verify_errors.str();

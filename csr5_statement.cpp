@@ -35,7 +35,7 @@
        return mask;
     }
 PageRankStateMent::PageRankStateMent(  ) {
-        std::vector<Type> args_type = {__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr};
+        std::vector<Type> args_type = {__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr};
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 
@@ -44,6 +44,8 @@ PageRankStateMent::PageRankStateMent(  ) {
         n2_var_ =  (*func_state_ptr_->get_args())[2];
         rank_var_ =  (*func_state_ptr_->get_args())[3];
         nneibor_var_ =  (*func_state_ptr_->get_args())[4];
+
+        shuffle_index_var_ =  (*func_state_ptr_->get_args())[5];
       
         sum_var_v_ = new Varience( __float_v_ptr );
 
@@ -51,6 +53,7 @@ PageRankStateMent::PageRankStateMent(  ) {
         n2_var_v_ = new Varience( __int_v_ptr );
         rank_var_v_ = new Varience( __float_v_ptr );
         nneibor_var_v_ = new Varience( __int_v_ptr );
+        shuffle_index_var_v_ = new Varience( __int8_v_ptr );
 
         sum_ptr_v_ = new Varience( __float_ptr_v );
         rank_ptr_v_ = new Varience( __float_ptr_v );
@@ -66,6 +69,7 @@ PageRankStateMent::PageRankStateMent(  ) {
 
         init_state_ = Block::make(init_state_, LetStat::make( nneibor_var_v_, BitCast::make( nneibor_var_, __int_v_ptr) ));
 
+        init_state_ = Block::make(init_state_, LetStat::make( shuffle_index_var_v_, BitCast::make( shuffle_index_var_, __int8_v_ptr) ));
         init_state_ = Block::make(init_state_,LetStat::make( sum_ptr_v_, BroadCast::make( sum_var_) ));
 
 
@@ -73,13 +77,15 @@ PageRankStateMent::PageRankStateMent(  ) {
 
         init_state_ = Block::make(init_state_,LetStat::make( nneibor_ptr_v_, BroadCast::make( nneibor_var_ )));
     };
-void PageRankStateMent::make( PageRankStructurePtr page_rank_structure_ptr )  {
+void PageRankStateMent::make( PageRankStructurePtr page_rank_structure_ptr , int * shuffle_num_vec )  {
         int * n2 = page_rank_structure_ptr->n2;
         bool true_vec[VECTOR] ;
         for( int i = 0 ; i < VECTOR ; i++ ) {
 	 	    true_vec[i] = true;
 	    }
         Const * true_vec_const = new Const ( true_vec, VECTOR );
+        Const * Four = new Const(4);
+        Const * SIXTY_FOUR = new Const(4*16);
         for( int i = 0 ; i < page_rank_structure_ptr->nedges ; i += VECTOR ) {
             Varience * nx_simd = new Varience( __int_v );
             Varience * ny_simd = new Varience( __int_v );
@@ -94,6 +100,7 @@ void PageRankStateMent::make( PageRankStructurePtr page_rank_structure_ptr )  {
             Varience * detect_simd = new Varience( __bool_v );
 
             Const * index_const = new Const(i/VECTOR);
+            Const * index_const_mul_vector = new Const(i);
             StateMent * nx_state = LetStat::make( nx_simd, Load::make( IncAddr::make( n1_var_v_, index_const ) ) ); 
 
             StateMent * ny_state = LetStat::make( ny_simd, Load::make( IncAddr::make( n2_var_v_, index_const ) ) ); 
@@ -104,15 +111,16 @@ void PageRankStateMent::make( PageRankStructurePtr page_rank_structure_ptr )  {
             StateMent * sum_state = LetStat::make( sum_simd , Gather::make( sum_ptr_v_ , ny_simd ,true_vec_const ) );
 
             StateMent * div_state = LetStat::make(div_simd,  Div::make( rank_simd, BitCast::make(nneibor_simd, __float_v )));  
-            int mask = generate_mask( &n2[i] );
+            int mask = shuffle_num_vec[i/VECTOR];
             //printf("%x\nmark_grep",mask);
             StateMent * complex_reduce_state;
             StateMent * detect_state ;
             StateMent * calc_state;
             printf("%x\n", mask);
             if( mask != 0x0 ) {
-                complex_reduce_state = LetStat::make(complex_reduce_simd, ComplexReduce::make( div_simd ,ny_simd,mask ));
+                complex_reduce_state = LetStat::make(complex_reduce_simd, ComplexReduce::make( div_simd ,ny_simd,IncAddr::make(shuffle_index_var_v_, Mul::make(index_const,Four) ),mask ));
 
+                //calc_state = LetStat::make( sum_simd_new, Add::make( sum_simd, div_simd) );
                 detect_state = LetStat::make( detect_simd, DetectConflict::make(ny_simd) );
 
                 calc_state = LetStat::make( sum_simd_new, Add::make( sum_simd, complex_reduce_simd) );

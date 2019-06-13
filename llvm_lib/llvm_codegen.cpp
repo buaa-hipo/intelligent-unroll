@@ -32,6 +32,14 @@
             return t_float_ptr_;
         } else if( type == __float_ptr_v ) {
             return t_float_ptr_vec_;
+        } else if( type == __int8 ) { 
+            return t_int8_;
+        } else if( type == __int8_ptr ) {
+            return t_int8_ptr_;
+        } else if(type == __int8_v) {
+            return t_int8_vec_;
+        } else if( type == __int8_v_ptr ) { 
+            return t_int8_vec_ptr_;
         } else {
             LOG(FATAL) << type <<"type does not support ";
             return t_int_;
@@ -44,6 +52,10 @@ LLVMCodeGen::LLVMCodeGen() {
         mod_ptr_= llvm::make_unique<llvm::Module>("module",*ctx_ptr_);
 
         conflict_512_ = llvm::Intrinsic::getDeclaration( mod_ptr_.get(), llvm::Intrinsic::x86_avx512_mask_conflict_d_512);
+
+        permvar_int_512_ = llvm::Intrinsic::getDeclaration( mod_ptr_.get() , llvm::Intrinsic::x86_avx512_permvar_si_512);
+
+        permvar_float_512_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_sf_512);
 	TheFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>( mod_ptr_.get());
 	TheFPM->add( llvm::createPromoteMemoryToRegisterPass());
 	TheFPM->add( llvm::createInstructionCombiningPass() );
@@ -72,7 +84,7 @@ LLVMCodeGen::LLVMCodeGen() {
         t_float_vec_ptr_ = t_float_vec_->getPointerTo();
 
         t_int_p_ = t_int_->getPointerTo();
-        t_int8_p_ = t_int8_->getPointerTo();
+        t_int8_ptr_ = t_int8_->getPointerTo();
         t_int64_p_ = t_int64_->getPointerTo();
         t_bool_p_ =  t_bool_->getPointerTo();
         t_double_p_ =  t_double_->getPointerTo();
@@ -80,6 +92,8 @@ LLVMCodeGen::LLVMCodeGen() {
         t_int_vec_ = llvm::VectorType::get( t_int_, lanes_);
         t_int64_vec_ = llvm::VectorType::get( t_int64_, lanes_ );
         t_bool_vec_ = llvm::VectorType::get( t_bool_, lanes_ );
+
+	    t_int8_vec_ = llvm::VectorType::get( t_int8_, lanes_ );
         t_double_vec_ = llvm::VectorType::get( t_double_, lanes_ );
         t_double_vec4_ = llvm::VectorType::get(t_double_,VECTOR4);
         t_int_vec4_ = llvm::VectorType::get(t_int_, VECTOR4);
@@ -87,7 +101,8 @@ LLVMCodeGen::LLVMCodeGen() {
         t_double_vec4_p_ = t_double_vec4_->getPointerTo();
         t_int_vec4_p_ = t_int_vec4_->getPointerTo();
 
-	    t_int_vec_p_ = t_int_vec_->getPointerTo();
+	    t_int8_vec_ptr_ = t_int8_vec_->getPointerTo();
+        t_int_vec_p_ = t_int_vec_->getPointerTo();
 	    t_double_vec_p_ = t_double_vec_->getPointerTo();
 
     	t_int_ptr_vec_ = llvm::VectorType::get(t_int_p_,lanes_);
@@ -97,7 +112,11 @@ LLVMCodeGen::LLVMCodeGen() {
         
         Zero_ = llvm::ConstantInt::get( t_int_ , 0);
 
+        SixTeen_ = llvm::ConstantInt::get( t_int_ , 16);
+
         ZeroVec_ = llvm::ConstantVector::getSplat( lanes_, Zero_);
+
+        SixTeenVec_ = llvm::ConstantVector::getSplat( lanes_, SixTeen_);
         FZero_ = llvm::ConstantFP::get( t_float_ , 0);
 
         FZeroVec_ = llvm::ConstantVector::getSplat( lanes_, FZero_);
@@ -494,8 +513,22 @@ llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
     llvm::Value * index = CodeGen( stat->get_index() );
     int mask = stat->get_mask();
     if(VECTOR == VECTOR16) {
+        llvm::Value * shuffle_index_ptr = CodeGen(stat->get_shuffle_index_ptr());
+        for( int i = 0 ; i < mask ; i++ ) {
+            llvm::Value * addr = build_ptr_->CreateInBoundsGEP( shuffle_index_ptr , CONST_INDEX_NUM_[i] );
+            llvm::Value * index = build_ptr_->CreateLoad(  addr);
+            llvm::Value * index_ext = build_ptr_->CreateZExtOrBitCast( index, t_int_vec_);
+            std::vector<llvm::Value*> args;
+            args.push_back(v1);
+            args.push_back(index_ext);
+            llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_512_ ,args );
 
-    #define VREDUCE_ELEM(NUM) \
+            llvm::Value * equal_sixteen = build_ptr_->CreateICmpEQ( index_ext, SixTeenVec_);
+            shuffle_data = build_ptr_->CreateSelect( equal_sixteen, FZeroVec_, shuffle_data );
+            v1 = build_ptr_->CreateFAdd( shuffle_data, v1 );
+
+        }
+/*    #define VREDUCE_ELEM(NUM) \
         llvm::Value * tmp = build_ptr_->CreateExtractElement( index ,CONST_INDEX_NUM_[(NUM)]); \
         llvm::Value * index_vec = LLVMBroadCast( tmp, lanes ); \
         llvm::Value * index_mask = build_ptr_->CreateICmpEQ( index_vec, index );        \
@@ -555,9 +588,12 @@ llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
         if( ( mask&0x8000 ) ) {
             VREDUCE_ELEM(15);
         }
-    }
+    }*/
         return v1;
+    } else {
+        LOG(FATAL) <<"Unsupported";
     }
+    return Null_;
 }
 
 llvm::Value * LLVMCodeGen::CodeGen_( DetectConflict * stat) {

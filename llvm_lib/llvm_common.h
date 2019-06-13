@@ -58,7 +58,7 @@ extern "C" {
 
     #define DATATYPE double
 //    typedef void(*BackendPackedCFunc)(DATATYPE *,DATATYPE*,DATATYPE*,int*,int*);
-    typedef int (*BackendPackedCFunc) ( float * , int * , int *, float * ,int *); 
+    typedef int (*BackendPackedCFunc) ( float * , int * , int *, float * ,int *,char*); 
 }
 /*!
  * \brief Initialize LLVM on this process,

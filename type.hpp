@@ -1,7 +1,7 @@
 #ifndef TYPE_HPP
 #define TYPE_HPP
 #include "configure.hpp"
-typedef enum {FLOAT, DOUBLE, INT, VOID,BOOL } DataType;
+typedef enum {FLOAT, DOUBLE, INT, VOID,BOOL,INT8 } DataType;
 #define NOT_VEC (1)
 #include <sstream>
 #include <string>
@@ -50,6 +50,9 @@ class Type {
                 break;
             case INT :
                 ss << "int";
+                break;
+            case INT8:
+                ss << "int8";
                 break;
             case VOID:
                 ss << "void";
@@ -104,10 +107,11 @@ extern Type __void ;
 extern Type __int ;
 extern Type __float ;
 extern Type __double;
+extern Type __int8;
  extern Type __double_ptr;
  extern Type __int_ptr ;
  extern Type __float_ptr ;
-
+ extern Type __int8_ptr;
 
 
  extern Type __float_v;
@@ -119,13 +123,14 @@ extern Type __double;
  extern Type __double_v;
  extern Type __bool_v ;
  extern Type __int_v ;
+ extern Type __int8_v;
+
  extern Type __double_v_pointer;
  extern Type __int_v_ptr;
  extern Type __float_ptr_v ;
+ extern Type __int8_v_ptr;
 
  extern Type __int_ptr_v;
-
-
 
 
 

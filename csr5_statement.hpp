@@ -17,6 +17,8 @@ class PageRankStateMent : StateMent{
     Varience * rank_var_;
     Varience * nneibor_var_;
     
+    Varience * shuffle_index_var_;
+    
 
     Varience * sum_var_v_;
     Varience * n1_var_v_;
@@ -24,6 +26,7 @@ class PageRankStateMent : StateMent{
     Varience * rank_var_v_;
     Varience * nneibor_var_v_;
     
+    Varience * shuffle_index_var_v_;
     Varience * nneibor_ptr_v_;
     Varience * sum_ptr_v_;
     Varience * rank_ptr_v_;
@@ -34,7 +37,7 @@ class PageRankStateMent : StateMent{
     public:
     PageRankStateMent(  ) ;
 
-    void make( PageRankStructurePtr page_rank_structure_ptr );
+    void make( PageRankStructurePtr page_rank_structure_ptr,int * shuffle_num_vec );
 
     FuncStatement * get_function() ;
 };

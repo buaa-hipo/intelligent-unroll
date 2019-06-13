@@ -8,7 +8,7 @@ LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executioneng
  
 
 all: sum
-LKFILE= sum.o Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o
+LKFILE= Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o analyze.o sum.o 
 sum: $(LKFILE)
 	$(LD) $^ $(LDFLAGS) -o $@
 
@@ -46,6 +46,8 @@ sum.bc: sum
 sum.ll: sum.bc
 	llvm-dis $<
 
+analyze.o:analyze.cpp
+	$(CC) -std=c++11 -O3  $< -c -o $@
 clean:
 	-rm -f sum.o sum sum.bc sum.ll *.o
 #~/llvm-project-llvmorg-7.0.1/build/bin/llc -mcpu=x86-64 -mattr=+fma,+avx2,avx,sse,sse2 sum.bc -o sum.S

@@ -63,6 +63,19 @@
                 count[in]++;
             }
     }
+    void Timer::printTimer(string in,int times) {
+        if(_OpenTimer) {
+             map<string,double>::iterator it = timeSum.find(in);
+
+            if(it==timeSum.end()) {
+                std::cout<<"there is no Timer "<<in<<std::endl;
+            }
+            else{
+                std::cout<< it->first <<" Time: "<<it->second / times
+                    <<" count: "<<count[it->first]<<std::endl;
+            }
+        }
+    }
 
     void Timer::printTimer(string in) {
         if(_OpenTimer) {

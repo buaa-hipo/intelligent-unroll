@@ -643,18 +643,19 @@ class DetectConflict : public Expr {
 class ComplexReduce : public Expr {
     StateMent * v1_;
 
+    StateMent * shuffle_index_ptr_;
     StateMent * index_;
     int mask_;
     protected:
 
-    ComplexReduce( StateMent * v1 , StateMent * index , int mask) : v1_(v1),index_(index),mask_(mask) {
+    ComplexReduce( StateMent * v1 , StateMent * index,StateMent * shuffle_index_ptr , int mask) : v1_(v1),index_(index),shuffle_index_ptr_(shuffle_index_ptr),mask_(mask) {
         Type * type_ptr_tmp = &v1_->get_type();
         type_ = *type_ptr_tmp;
     }
     public:
     static constexpr const char* class_name_ = "complex_reduce";
-    static StateMent * make( StateMent * v1, StateMent * index, int mask = 0xffff ) {
-        StateMent * stat_ptr = new ComplexReduce( v1, index, mask );
+    static StateMent * make( StateMent * v1, StateMent * index, StateMent * shuffle_index_ptr,int mask = 0xffff ) {
+        StateMent * stat_ptr = new ComplexReduce( v1, index, shuffle_index_ptr,mask );
         return stat_ptr;
     }
     virtual std::string get_class_name() {
@@ -663,6 +664,10 @@ class ComplexReduce : public Expr {
     StateMent * get_v1() {
         return v1_;
     }
+    StateMent * get_shuffle_index_ptr() {
+        return shuffle_index_ptr_;
+    }
+
     StateMent * get_index() {
         return index_;
     }
