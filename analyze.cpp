@@ -1,6 +1,10 @@
 #include "analyze.h"
 #include <iostream>
-int analyze( int * vec ,ShuffleIndexPtr shuffle_index_ptr ) {
+#include <memory>
+#include <stdio.h>
+#include <stdlib.h>
+#include <mm_malloc.h>
+int analyze(const int * vec ,ShuffleIndexPtr shuffle_index_ptr ) {
     int max_len = 1;
     for( int i = 0 ; i < VECTOR; i++ ) {
         int value = vec[i];
@@ -48,4 +52,34 @@ int analyze( int * vec ,ShuffleIndexPtr shuffle_index_ptr ) {
     }
     return num;
 }
+int** Analyze( ShuffleIndexPtr shuffle_index_ptr , int * mask_vec,int nedges_pack_num, const int * n2,int * addr_num ) {
+    int ** addr = (int**)malloc(sizeof(int*) * MASK_NUM );
+    for( int i = 0 ; i < MASK_NUM ; i++ ) 
+        addr_num[i] = 0;
+    for(int j=0 , j_pack = 0 ;j_pack < nedges_pack_num ;j_pack++, j+=VECTOR) {
+        const int *ny = &n2[j];
+        int num = analyze( ny , &shuffle_index_ptr[j_pack*4]);
+        mask_vec[j_pack] = num;
+        addr_num[num]++;
+    }
+    for( int i = 0 ; i < MASK_NUM ; i++ ) { 
+        addr[i] = (int*)_mm_malloc(sizeof(int)*addr_num[i],64);
+        addr_num[i] = 0;
+    }
+    for( int j = 0 ; j < nedges_pack_num ; j++ ) {
+        int mask = mask_vec[j];
+        int index = addr_num[mask];
+        addr[mask][index] = j;
+        addr_num[mask]++;
+    }
+    for( int i = 0 ; i < MASK_NUM ; i++ ) {
+        printf("%d:%d\n",i,addr_num[i]);
+       // for(int j = 0 ; j < addr_num[i]; j++) 
+     //       printf("%d ",addr[i][j]);
+        printf("\n");
+    }
+    return addr;
+}
+
+
 

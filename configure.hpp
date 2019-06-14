@@ -4,5 +4,5 @@
     #define VECTOR8 8
     #define VECTOR16 16
     #define VECTOR VECTOR16
-
+    #define MASK_NUM 5
 #endif

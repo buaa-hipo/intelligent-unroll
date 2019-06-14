@@ -19,6 +19,7 @@ class PageRankStateMent : StateMent{
     
     Varience * shuffle_index_var_;
     
+    Varience * mask_addr_[MASK_NUM];
 
     Varience * sum_var_v_;
     Varience * n1_var_v_;
@@ -37,7 +38,8 @@ class PageRankStateMent : StateMent{
     public:
     PageRankStateMent(  ) ;
 
-    void make( PageRankStructurePtr page_rank_structure_ptr,int * shuffle_num_vec );
+    StateMent * get_element(StateMent * index ,int mask) ;
+    void make( int * shuffle_num_vec,int mask_num,int * addr_num );
 
     FuncStatement * get_function() ;
 };

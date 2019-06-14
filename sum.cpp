@@ -148,16 +148,19 @@ int main( int argc , char const * argv[] ) {
     ShuffleIndexPtr shuffle_index_ptr = (ShuffleIndexPtr) _mm_malloc(sizeof(ShuffleIndex)*4*nedges_pack_num,64);
 
     int *  mask_vec = (int*)malloc(sizeof(int)*nedges_pack_num);
-    for(int j=0 , j_pack = 0 ;j_pack < nedges_pack_num ;j_pack++, j+=VECTOR) {
-        int *ny = &n2[j];
-        int num = analyze( ny , &shuffle_index_ptr[j_pack*4]);
-        mask_vec[j_pack] = num;
+    int addr_num[MASK_NUM];
+    int ** addr = Analyze( shuffle_index_ptr, mask_vec, nedges_pack_num ,n2, addr_num);
+/*    for( int i = 0 ; i < MASK_NUM ; i++ ) {
+        printf("%d:\n",i);
+        for(int j = 0 ; j < addr_num[i]; j++) 
+            printf("%d ",addr[i][j]);
+        printf("\n");
     }
-
+*/
     LOG(INFO) << "Before Make\n";
     fflush(stdout);
 
-    page_rank_statement_ptr->make( page_rank_structure_ptr, mask_vec );
+    page_rank_statement_ptr->make(  mask_vec, nedges_pack_num, addr_num );
     LOG(INFO) << "After Make\n";
     fflush(stdout);
     LOG(INFO) << "Before GetFunction\n";
@@ -176,7 +179,7 @@ int main( int argc , char const * argv[] ) {
     codegen.AddFunction( func_ptr );
     LOG(INFO) << "After AddFunction\n";
 
-//    codegen.PrintModule();
+    //codegen.PrintModule();
     LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
      LOG(INFO) << "After New module\n";
     fflush(stdout);
@@ -190,7 +193,13 @@ int main( int argc , char const * argv[] ) {
 //    std::cout << llvm_module_ptr->GetSource("asm");
     LOG(INFO) << "Before Get Function\n";
     fflush(stdout);
+
+    Timer::startTimer("get_function");
     BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
+
+    Timer::endTimer("get_function");
+
+    Timer::printTimer("get_function");
     LOG(INFO) << "After Get Function\n";
     fflush(stdout);
 
@@ -233,18 +242,21 @@ int main( int argc , char const * argv[] ) {
 
     fflush(stdout);
 
-    func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
+    func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
     for( int i = 0 ; i < 50 ; i++ )
-        func( sum_time,n1,n2,rank,nneibor ,(char*)shuffle_index_ptr);
+
+        func( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
     Timer::startTimer("jit");
 //     for( int i = 0 ; i < 100 ; i++ )
-//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
-    for( int i = 0 ; i < 1000; i++ )
-        func( sum_time,n1,n2,rank,nneibor ,(char*)shuffle_index_ptr);
+//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr());
+#define     TIMES 1000
+    for( int i = 0 ; i < TIMES; i++ )
+
+        func( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
 
     Timer::endTimer("jit");
-    Timer::printTimer("jit",1000);
-
+    Timer::printTimer("jit",TIMES);
+#undef TIMES
     LOG(INFO) << "After Calc\n";
 //    print_vec(y_array,row_num); 
     check_equal( sum,sum_bak,nnodes );

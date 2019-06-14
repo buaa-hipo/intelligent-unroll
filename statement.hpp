@@ -153,26 +153,46 @@ class Expr :public StateMent {
     } 
 };
 class Block : public StateMent{
-
-    StateMent* stat1_;
-    StateMent* stat2_;
+    std::vector<StateMent*> * state_vec_ptr;
+//    StateMent* stat1_;
+//    StateMent* stat2_;
     protected:
-        Block(StateMent * stat1,StateMent * stat2) : stat1_(stat1),stat2_(stat2) {
-            
+        Block(StateMent*stat1 , StateMent * stat2  ) {
+            state_vec_ptr = new std::vector<StateMent*>();
+            state_vec_ptr->resize( 2,nullptr);
+
+            (*state_vec_ptr)[0] = stat1;
+            (*state_vec_ptr)[1] = stat2;
         }
+
     public:
 
     static constexpr const char* class_name_ = "block";
     static  StateMent * make( StateMent * stat1,StateMent * stat2 ) {
-            StateMent * stat_ptr = new Block(stat1,stat2);
-            return stat_ptr;
+        Block * stat1_block = dynamic_cast<Block*>(stat1 ); 
+        Block * stat2_block = dynamic_cast<Block*>(stat2);
+
+        StateMent * state_ptr;
+        if( stat1_block != nullptr && stat2_block != nullptr ) {
+            stat1_block->get_stat_vec()->push_back(stat2);
+            state_ptr = stat1_block;
+
+        } else if(stat1_block != nullptr ) {
+            stat1_block->get_stat_vec()->push_back(stat2);
+            state_ptr = stat1_block;
+        } else if(stat2_block != nullptr) {
+      
+            state_ptr = new Block( stat1, stat2 );
+        } else {
+        
+            state_ptr = new Block( stat1, stat2 );
+        }
+//            StateMent * stat_ptr = new Block(stat1,stat2);
+        return state_ptr;
     }
 
-    StateMent * get_stat1() {
-        return stat1_;
-    }
-    StateMent * get_stat2() {
-        return stat2_;
+    std::vector<StateMent *> * get_stat_vec() {
+        return state_vec_ptr;
     }
     virtual std::string get_class_name() {
         return class_name_;

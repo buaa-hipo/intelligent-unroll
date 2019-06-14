@@ -139,10 +139,10 @@ LLVMCodeGen::LLVMCodeGen() {
         return Null_;
     }
 llvm::Value * LLVMCodeGen::CodeGen_(Block * stat  ) {
-        StateMent * stat1 = stat->get_stat1();
-        StateMent * stat2 = stat->get_stat2();
-        CodeGen(stat1 );
-        CodeGen(stat2);
+    std::vector<StateMent* > * state_vec_ptr = stat->get_stat_vec();
+    for(int i = 0 ; i < state_vec_ptr->size() ; i++) {
+        CodeGen((*state_vec_ptr)[i]);
+    }
         return Null_;
     }
 llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
@@ -172,20 +172,31 @@ llvm::Value * LLVMCodeGen::CodeGen_( For * stat ) {
         const std::string& var_name = var->get_name();
         llvm::Function * f = build_ptr_->GetInsertBlock()->getParent();
         
+        llvm::BasicBlock * after_BB = llvm::BasicBlock::Create(*ctx_ptr_,"afterloop",f);
+
+        llvm::BasicBlock * loop_BB = llvm::BasicBlock::Create(*ctx_ptr_, "loop",f);
         llvm::AllocaInst * Alloca = CreateEntryBlockAlloca(t_int_,f,var_name);
+
         llvm::Value * stat_val = CodeGen( stat->get_begin());
         if( !stat_val ) {
             return nullptr;
         }
+
         ///store the value into the alloca
-        build_ptr_->CreateStore( stat_val, Alloca );
-        ////////
-        llvm::BasicBlock * loop_BB = llvm::BasicBlock::Create(*ctx_ptr_, "loop",f);
-        build_ptr_->CreateBr(loop_BB);
-        build_ptr_->SetInsertPoint(loop_BB);
         /*ctx_ptr_ = std::make_unique<llvm::LLVMContext>();
         mod_ptr_= std::make_unique<llvm::Module>("module",*ctx_ptr_);
         build_ptr_ = std::make_unique<llvm::IRBuilder<>>(*ctx_ptr_);*/
+        llvm::Value * end_value = CodeGen( stat->get_end() );
+        if( !end_value ) {
+            return nullptr;
+        }
+
+        build_ptr_->CreateStore( stat_val, Alloca );
+        llvm::Value * end_cond = build_ptr_->CreateICmpSLT( stat_val,end_value,"loopcond");     
+        build_ptr_->CreateCondBr(end_cond, loop_BB,after_BB);
+
+        ////////
+        build_ptr_->SetInsertPoint(loop_BB);
 
 
         var_val_map_[var] = Alloca;
@@ -205,17 +216,12 @@ llvm::Value * LLVMCodeGen::CodeGen_( For * stat ) {
         } else {
             step_val = One_;
         }
-        llvm::Value * end_cond = CodeGen( stat->get_end() );
-        if( !end_cond ) {
-            return nullptr;
-        }
         llvm::Value * cur_var = build_ptr_->CreateLoad( Alloca, var_name );
 
         llvm::Value * NextVar = build_ptr_->CreateAdd( cur_var, step_val,"nextvar");
 
         build_ptr_->CreateStore(NextVar,Alloca);
-        end_cond = build_ptr_->CreateICmpSLT( NextVar,end_cond ,"loopcond");     
-        llvm::BasicBlock * after_BB = llvm::BasicBlock::Create(*ctx_ptr_,"afterloop",f);
+        end_cond = build_ptr_->CreateICmpSLT( NextVar,end_value ,"loopcond");     
         build_ptr_->CreateCondBr(end_cond, loop_BB,after_BB);
         build_ptr_->SetInsertPoint(after_BB);
         return Null_;

@@ -5,5 +5,5 @@ typedef struct ShuffleIndex {
     char index[VECTOR];
 } ShuffleIndex, *ShuffleIndexPtr;
 
-int analyze( int * vec ,ShuffleIndexPtr shuffle_index_ptr ) ;
+int** Analyze( ShuffleIndexPtr shuffle_index_ptr , int * mask_vec,int nedges_pack_num, const int * n2 ,int * addr_num) ;
 #endif

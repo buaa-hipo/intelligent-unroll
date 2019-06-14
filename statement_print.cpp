@@ -5,8 +5,10 @@ void StateMentPrint::print_(StateMent * stat,std::ostream&os) {
     printf("\nthe statement %s does not support\n", stat->get_class_name().c_str());
 }
 void StateMentPrint::print_(Block * stat,std::ostream&os) {
-    print(stat->get_stat1(),os);
-    print(stat->get_stat2(),os);
+    std::vector<StateMent* > * state_vec = stat->get_stat_vec();
+    for(int i = 0 ; i < state_vec->size() ; i++) {
+        print((*state_vec)[i],os);
+    }
 }
 void StateMentPrint::print_(For * stat,std::ostream&os) {
     os << "for ( ";
