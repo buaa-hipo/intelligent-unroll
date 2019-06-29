@@ -69,6 +69,7 @@
 #include "small_case.hpp"
 #include "llvm_lib/llvm_codegen.hpp"
 #include "analyze.h"
+#include "pagerank_fuse_all.hpp"
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
@@ -146,77 +147,21 @@ int main( int argc , char const * argv[] ) {
 
     int nedges_pack_num = nedges / VECTOR;
     ShuffleIndexPtr shuffle_index_ptr = (ShuffleIndexPtr) _mm_malloc(sizeof(ShuffleIndex)*4*nedges_pack_num,64);
+    PageRankFuseAll page_rank_fuse_all;
 
     int *  mask_vec = (int*)malloc(sizeof(int)*nedges_pack_num);
     int addr_num[MASK_NUM];
-    int ** addr = Analyze( shuffle_index_ptr, mask_vec, nedges_pack_num ,n2, addr_num);
-/*    for( int i = 0 ; i < MASK_NUM ; i++ ) {
-        printf("%d:\n",i);
-        for(int j = 0 ; j < addr_num[i]; j++) 
-            printf("%d ",addr[i][j]);
-        printf("\n");
-    }
-*/
-    LOG(INFO) << "Before Make\n";
-    fflush(stdout);
+    page_rank_fuse_all.compiler( shuffle_index_ptr, mask_vec, nedges_pack_num ,n2, addr_num);
 
-    page_rank_statement_ptr->make(  mask_vec, nedges_pack_num, addr_num );
-    LOG(INFO) << "After Make\n";
-    fflush(stdout);
-    LOG(INFO) << "Before GetFunction\n";
-    fflush(stdout);
 
-    FuncStatement * func_ptr = page_rank_statement_ptr->get_function(); 
-    StateMentPrint statement_print;
-    LOG(INFO) << "After GetFunction\n";
-    fflush(stdout);
 
-//    statement_print.print( func_ptr->get_state() ,std::cout);
-    LOG(INFO) << "Before AddFunction\n";
-    fflush(stdout);
 
-    LLVMCodeGen codegen;
-    codegen.AddFunction( func_ptr );
-    LOG(INFO) << "After AddFunction\n";
 
-    //codegen.PrintModule();
-    LLVMModule * llvm_module_ptr = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
-     LOG(INFO) << "After New module\n";
-    fflush(stdout);
-
-    llvm_module_ptr->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
-     LOG(INFO) << "After Init module\n";
-    fflush(stdout);
-   
-//    LLVMLOG(INFO) << * (llvm_module_ptr->get_module());
-    //using func = void( double*,double*,double*,int* );
-//    std::cout << llvm_module_ptr->GetSource("asm");
-    LOG(INFO) << "Before Get Function\n";
-    fflush(stdout);
-
-    Timer::startTimer("get_function");
-    BackendPackedCFunc func = llvm_module_ptr->GetFunction("function");
-
-    Timer::endTimer("get_function");
-
-    Timer::printTimer("get_function");
-    LOG(INFO) << "After Get Function\n";
-    fflush(stdout);
-
-    //    printf("\ny_array \n");
-
-        for( int i = 0 ; i < nnodes ; i++ )
+    for( int i = 0 ; i < nnodes ; i++ )
         sum_bak[i] = sum[i];
     for( int i = 0 ; i < nnodes ; i++ )
         sum_time[i] = sum[i];
 
-//    print_vec( n1, nedges );
-
-//    print_vec( n2, nedges );
-
-    LOG(INFO) << "Before Calc\n";
-
-    fflush(stdout);
     Timer::startTimer("aot");
     for(int j=0;j<nedges;j++) {
       int nx = n1[j];
@@ -230,29 +175,16 @@ int main( int argc , char const * argv[] ) {
     LOG(INFO) << "After Calc\n";
 
     fflush(stdout);
-//    print_vec( sum_bak, nnodes );    
-//    fflush(stdout);
 
-//    print_vec( sum, nnodes );    
-//    print_vec(y_array_bak,row_num);
-//    for( int i = 0 ; i < 50 ; i++ )
-//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr()); 
-
-    LOG(INFO) << "Before Calc\n";
-
-    fflush(stdout);
-
-    func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
+    page_rank_fuse_all( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
     for( int i = 0 ; i < 50 ; i++ )
 
-        func( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
+        page_rank_fuse_all( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
     Timer::startTimer("jit");
-//     for( int i = 0 ; i < 100 ; i++ )
-//        func(       y_array_time,     x_array,data_ptr,column_ptr, analyze_CSR5.get_tile_row_index_ptr());
-#define     TIMES 1000
+#define     TIMES 1
     for( int i = 0 ; i < TIMES; i++ )
 
-        func( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr[0],addr[1],addr[2],addr[3],addr[4]);
+        page_rank_fuse_all( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
