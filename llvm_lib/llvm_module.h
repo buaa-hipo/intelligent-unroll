@@ -14,6 +14,7 @@
 #include <llvm-c/BitWriter.h>
 
 
+template<typename BackendPackedCFunc>
 class LLVMModule  {
  public:
   ~LLVMModule() {

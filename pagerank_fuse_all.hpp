@@ -4,6 +4,7 @@
 using FType1 = void( ShuffleIndexPtr, int*,int,const int * ,int* );
 using FType2 = int( float*,int*,int*,float*,int*,char* );
 using UnrollFunctionSpec = UnrollFunction<FType1,FType2,char>;
+typedef int(*inner_func)( int**,float*,int*,int*,float*,int*,char*);
 
 class PageRankFuseAll : public UnrollFunctionSpec {
     int * mask_vec_;
@@ -27,9 +28,9 @@ class PageRankFuseAll : public UnrollFunctionSpec {
      
     int operator() ( float* sum ,int*n1,int*n2,float*rank,int*nneibor,char*shuffle_index_ptr) {
     
-       BackendPackedCFunc func = llvm_module_ptr_->GetFunction("function");
-
-       func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr_);
+       inner_func func = llvm_module_ptr_->GetFunction("function");
+    
+       (*func)(addr_, sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
     }
 };
 

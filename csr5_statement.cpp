@@ -36,19 +36,19 @@
        return mask;
     }
 PageRankStateMent::PageRankStateMent(  ) {
-        std::vector<Type> args_type = {__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr,__int_ptr_ptr};
+        std::vector<Type> args_type = {__int_ptr_ptr,__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr};
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 
-        sum_var_ =  (*func_state_ptr_->get_args())[0];
-        n1_var_ =  (*func_state_ptr_->get_args())[1];
-        n2_var_ =  (*func_state_ptr_->get_args())[2];
-        rank_var_ =  (*func_state_ptr_->get_args())[3];
-        nneibor_var_ =  (*func_state_ptr_->get_args())[4];
+        mask_addr_ =  (*func_state_ptr_->get_args())[0];
+        sum_var_ =  (*func_state_ptr_->get_args())[1];
+        n1_var_ =  (*func_state_ptr_->get_args())[2];
+        n2_var_ =  (*func_state_ptr_->get_args())[3];
+        rank_var_ =  (*func_state_ptr_->get_args())[4];
+        nneibor_var_ =  (*func_state_ptr_->get_args())[5];
 
-        shuffle_index_var_ =  (*func_state_ptr_->get_args())[5];
+        shuffle_index_var_ =  (*func_state_ptr_->get_args())[6];
 
-        mask_addr_ =  (*func_state_ptr_->get_args())[6];
 
 
       
