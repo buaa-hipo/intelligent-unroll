@@ -29,7 +29,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
     
        BackendPackedCFunc func = llvm_module_ptr_->GetFunction("function");
 
-       func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr_[0],addr_[1],addr_[2],addr_[3],addr_[4]);
+       func( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr ,addr_);
     }
 };
 

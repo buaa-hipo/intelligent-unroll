@@ -53,6 +53,8 @@ class LLVMCodeGen {
     llvm::Type*  t_float_;
 
     llvm::Type*  t_int_p_ ;
+
+    llvm::Type*  t_int_p_p_ ;
     llvm::Type*  t_int64_p_;
 
     llvm::Type*  t_int8_ptr_ ;

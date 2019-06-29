@@ -36,7 +36,7 @@
        return mask;
     }
 PageRankStateMent::PageRankStateMent(  ) {
-        std::vector<Type> args_type = {__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr,__int_ptr,__int_ptr,__int_ptr,__int_ptr,__int_ptr};
+        std::vector<Type> args_type = {__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr,__int_ptr_ptr};
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 
@@ -48,11 +48,7 @@ PageRankStateMent::PageRankStateMent(  ) {
 
         shuffle_index_var_ =  (*func_state_ptr_->get_args())[5];
 
-        mask_addr_[0] =  (*func_state_ptr_->get_args())[6];
-        mask_addr_[1] =  (*func_state_ptr_->get_args())[7];
-        mask_addr_[2] =  (*func_state_ptr_->get_args())[8];
-        mask_addr_[3] =  (*func_state_ptr_->get_args())[9];
-        mask_addr_[4] =  (*func_state_ptr_->get_args())[10];
+        mask_addr_ =  (*func_state_ptr_->get_args())[6];
 
 
       
@@ -94,15 +90,20 @@ void PageRankStateMent::make( int * shuffle_num_vec,int mask_num, int * addr_num
 
        for( int mask = 0 ; mask < MASK_NUM ; mask++ ) {
            Const * const_end = new Const( addr_num[mask] );
+           Const * mask_const = new Const( mask );
            Varience * index = new Varience(__int);
+           Varience * addr_ptr = new Varience(__int_ptr);
+            
+           StateMent * addr_ptr_state = LetStat::make( addr_ptr, Load::make(IncAddr::make( mask_addr_, mask_const )) ); 
            StateMent * push_state = For::make(const_zero , const_one, const_end); 
 
            StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
-           StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make(mask_addr_[mask],inc_i)) );
+           StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make( addr_ptr ,inc_i)) );
 
 //           StateMent * index_state = LetStat::make( index , const_zero );
            StateMent * elem_state = get_element( index, mask);
            dynamic_cast<For*>(push_state)->SetState(Block::make(index_state,elem_state));
+           push_state = Block::make( addr_ptr_state, push_state);
            state_vec_.push_back( push_state );
        }
     }

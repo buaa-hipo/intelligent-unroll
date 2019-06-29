@@ -14,6 +14,8 @@
             return t_double_->getPointerTo();
         } else if(type == __int_ptr) {
             return t_int_->getPointerTo();
+        } else if(type == __int_ptr_ptr) {
+            return t_int_->getPointerTo()->getPointerTo();
         } else if(type == __bool_v){
             return t_bool_vec_;
         } else if(type == __double_v_pointer){
@@ -84,6 +86,8 @@ LLVMCodeGen::LLVMCodeGen() {
         t_float_vec_ptr_ = t_float_vec_->getPointerTo();
 
         t_int_p_ = t_int_->getPointerTo();
+
+        t_int_p_p_ = t_int_p_->getPointerTo();
         t_int8_ptr_ = t_int8_->getPointerTo();
         t_int64_p_ = t_int64_->getPointerTo();
         t_bool_p_ =  t_bool_->getPointerTo();

@@ -19,7 +19,7 @@ class PageRankStateMent : StateMent{
     
     Varience * shuffle_index_var_;
     
-    Varience * mask_addr_[MASK_NUM];
+    Varience * mask_addr_;
 
     Varience * sum_var_v_;
     Varience * n1_var_v_;
