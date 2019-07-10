@@ -1,111 +1,83 @@
 #include "csr5_statement.hpp"
 #include "type.hpp"
 #include "statement_print.hpp"
-    StateMent* CombinStatVec( const std::vector<StateMent*> &stat_vec ) {
-        if( stat_vec.size() == 0 ) { 
-		    return Nop::make(); 
-	    }
-        else if(stat_vec.size() == 1) {return stat_vec[0];}
-        else {
-            StateMent * block_stat = Block::make( stat_vec[0],stat_vec[1]);
-            for( int i = 2 ; i < stat_vec.size(); i++ ) {
-                block_stat = Block::make( block_stat, stat_vec[i] );
-            }
-            return block_stat;
-        }
-    }
-
-    int generate_mask( int * index ) {
-       int mask = 0x0; 
-       for( int i = 0 ; i < VECTOR ; i++ ) {
-            int value = index[i];
-            for( int j = 0 ; j < VECTOR ; j++) {
-                if( index[j] == value) {
-                        if( j < i ) {
-                            break;
-                        } else {
-                            if(j>i) {
-                                mask |= 0x1<<j;
-                                break;
-                            }
-                        }
-                    
-                } 
-            }
-       }
-       return mask;
-    }
-PageRankStateMent::PageRankStateMent(  ) {
-        std::vector<Type> args_type = {__int_ptr_ptr,__float_ptr, __int_ptr, __int_ptr, __float_ptr,__int_ptr,__int8_ptr};
+    
+    PageRankStateMent::PageRankStateMent(  ) {
+        //(*func_)( y_ptr, x_ptr, data_ptr, column_ptr, row_ptr, row_num, row_ptr_ptr_, index_ptr_ptr_ );
+        std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr  };
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 
-        mask_addr_ =  (*func_state_ptr_->get_args())[0];
-        sum_var_ =  (*func_state_ptr_->get_args())[1];
-        n1_var_ =  (*func_state_ptr_->get_args())[2];
-        n2_var_ =  (*func_state_ptr_->get_args())[3];
-        rank_var_ =  (*func_state_ptr_->get_args())[4];
-        nneibor_var_ =  (*func_state_ptr_->get_args())[5];
+        y_ptr_var_ =  (*func_state_ptr_->get_args())[0];
+        x_ptr_var_ =  (*func_state_ptr_->get_args())[1];
+        data_ptr_var_ = (*func_state_ptr_->get_args())[2];
+        column_ptr_var_ = (*func_state_ptr_->get_args())[3];
+        row_ptr_var_ = (*func_state_ptr_->get_args() )[4];
+        row_num_var_ = (*func_state_ptr_->get_args())[5];
+        row_ptr_ptr_var_ = (*func_state_ptr_->get_args())[6];
+        index_ptr_ptr_var_ = (*func_state_ptr_->get_args())[7];
 
-        shuffle_index_var_ =  (*func_state_ptr_->get_args())[6];
+        y_v_ptr_var_ = new Varience( __double_v_ptr );
+        x_v_ptr_var_ = new Varience( __double_v_ptr );
+        data_v_ptr_var_ = new Varience( __double_v_ptr );
+        column_v_ptr_var_ = new Varience( __int_v_ptr );
+        
+        y_ptr_v_var_ = new Varience( __double_ptr_v );
+        x_ptr_v_var_ = new Varience( __double_ptr_v );
 
+///////////////////init
+        init_state_ = LetStat::make( y_v_ptr_var_, BitCast::make( y_ptr_var_ , __double_v_ptr ) );
+        init_state_ = Block::make(init_state_, LetStat::make( x_v_ptr_var_ , BitCast::make( x_ptr_var_, __double_v_ptr) ));
+        init_state_ = Block::make(init_state_, LetStat::make( data_v_ptr_var_ , BitCast::make( data_ptr_var_, __double_v_ptr) )); 
+        init_state_ = Block::make(init_state_, LetStat::make( column_v_ptr_var_ , BitCast::make( column_ptr_var_, __int_v_ptr) ));
+////////////////broadcast
+        init_state_ = Block::make(init_state_,LetStat::make( x_ptr_v_var_, BroadCast::make( x_ptr_var_) ));
+        init_state_ = Block::make(init_state_,LetStat::make( y_ptr_v_var_, BroadCast::make( y_ptr_var_) ));
 
-
-      
-        sum_var_v_ = new Varience( __float_v_ptr );
-
-        n1_var_v_ = new Varience( __int_v_ptr );
-        n2_var_v_ = new Varience( __int_v_ptr );
-        rank_var_v_ = new Varience( __float_v_ptr );
-        nneibor_var_v_ = new Varience( __int_v_ptr );
-        shuffle_index_var_v_ = new Varience( __int8_v_ptr );
-
-        sum_ptr_v_ = new Varience( __float_ptr_v );
-        rank_ptr_v_ = new Varience( __float_ptr_v );
-        nneibor_ptr_v_ = new Varience( __int_ptr_v );
-
-        init_state_ = LetStat::make( sum_var_v_, BitCast::make( sum_var_, __float_v_ptr ) );
-
-        init_state_ = Block::make(init_state_, LetStat::make( n1_var_v_ , BitCast::make( n1_var_, __int_v_ptr) ));
-
-        init_state_ = Block::make(init_state_, LetStat::make( n2_var_v_ , BitCast::make( n2_var_, __int_v_ptr) ));
-
-        init_state_ = Block::make(init_state_, LetStat::make( rank_var_v_ , BitCast::make( rank_var_, __float_v_ptr) ));
-
-        init_state_ = Block::make(init_state_, LetStat::make( nneibor_var_v_, BitCast::make( nneibor_var_, __int_v_ptr) ));
-
-        init_state_ = Block::make(init_state_, LetStat::make( shuffle_index_var_v_, BitCast::make( shuffle_index_var_, __int8_v_ptr) ));
-        init_state_ = Block::make(init_state_,LetStat::make( sum_ptr_v_, BroadCast::make( sum_var_) ));
-
-
-        init_state_ = Block::make(init_state_,LetStat::make( rank_ptr_v_, BroadCast::make( rank_var_) ));
-
-        init_state_ = Block::make(init_state_,LetStat::make( nneibor_ptr_v_, BroadCast::make( nneibor_var_ )));
     };
-void PageRankStateMent::make( int * shuffle_num_vec,int mask_num, int * addr_num )  {
+    void PageRankStateMent::make(const std::map<Mask2 , int> & mask_num_map )  {
+        Const * const_zero = new Const(0);
 
-       Const * const_zero = new Const(0);
+        Const * const_one = new Const(1);
+        int i = 0;
+        for( auto it : mask_num_map ) {
+        Varience * index_ptr = new Varience(__int_ptr);
+        Varience * row_ptr = new Varience( __int_ptr );
+        Varience * y_offset_ptr = new Varience( __double_ptr );
+        Varience * index = new Varience(__int);
+        Varience * row_index = new Varience( __int);
 
-       Const * const_one = new Const(1);
+            const Mask2 & mask =  it.first;
+            const int circle_num = it.second;
+            Const* const_i = new Const( i );
+            Const * const_end = new Const( circle_num );
 
-       for( int mask = 0 ; mask < MASK_NUM ; mask++ ) {
-           Const * const_end = new Const( addr_num[mask] );
-           Const * mask_const = new Const( mask );
-           Varience * index = new Varience(__int);
-           Varience * addr_ptr = new Varience(__int_ptr);
+            StateMent * index_ptr_state = LetStat::make( index_ptr, Load::make(IncAddr::make( index_ptr_ptr_var_, const_i )) ); 
+            StateMent * row_ptr_state = LetStat::make( row_ptr, Load::make(IncAddr::make( row_ptr_ptr_var_, const_i )) ); 
+
+            StateMent * push_state = For::make(const_zero , const_one, const_end);
+            StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
+
+            StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make( index_ptr ,inc_i)) );
+            StateMent * row_index_state = LetStat::make( row_index , Load::make(IncAddr::make( row_ptr ,inc_i)) );
+//            StateMent * debug_print = Print::make( row_index ); 
+            StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
+
+            StateMent * elem_state = get_element( index, y_offset_ptr, mask ); 
             
-           StateMent * addr_ptr_state = LetStat::make( addr_ptr, Load::make(IncAddr::make( mask_addr_, mask_const )) ); 
-           StateMent * push_state = For::make(const_zero , const_one, const_end); 
+            StateMent * inner_for_state = Block::make(y_addr_state,elem_state);
+            inner_for_state = Block::make(index_state , inner_for_state );
 
-           StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
-           StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make( addr_ptr ,inc_i)) );
+  //          inner_for_state = Block::make( debug_print, inner_for_state );
+            inner_for_state = Block::make( row_index_state , inner_for_state );
+            dynamic_cast<For*>(push_state)->SetState(inner_for_state);
+            
+           push_state = Block::make( index_ptr_state, push_state);
+           push_state = Block::make( row_ptr_state, push_state);
 
-//           StateMent * index_state = LetStat::make( index , const_zero );
-           StateMent * elem_state = get_element( index, mask);
-           dynamic_cast<For*>(push_state)->SetState(Block::make(index_state,elem_state));
-           push_state = Block::make( addr_ptr_state, push_state);
            state_vec_.push_back( push_state );
-       }
+           i++;
+        }
     }
     FuncStatement * PageRankStateMent::get_function() {
         LOG(INFO) << state_vec_.size();

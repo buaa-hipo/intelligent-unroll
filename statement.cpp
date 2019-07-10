@@ -1,4 +1,19 @@
 #include "statement.hpp"
+    StateMent* CombinStatVec( const std::vector<StateMent*> &stat_vec ) {
+        if( stat_vec.size() == 0 ) { 
+		    return Nop::make(); 
+	    }
+        else if(stat_vec.size() == 1) {return stat_vec[0];}
+        else {
+            StateMent * block_stat = Block::make( stat_vec[0],stat_vec[1]);
+            for( int i = 2 ; i < stat_vec.size(); i++ ) {
+                block_stat = Block::make( block_stat, stat_vec[i] );
+            }
+            return block_stat;
+        }
+    }
+
+
 std::map<std::string,int> classname_typeid_map = {
     {"statement",0},
     {"block",1},

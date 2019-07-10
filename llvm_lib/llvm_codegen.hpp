@@ -18,7 +18,7 @@
 class LLVMCodeGen {
     const int lanes_ = VECTOR;
 
-    const int alinements_ = 256;
+    const int alinements_ = 64;
     using Value = llvm::Value;
     using Function = llvm::Function;
     using string = std::string;

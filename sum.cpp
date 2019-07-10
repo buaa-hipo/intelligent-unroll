@@ -57,6 +57,7 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
 
+#include "csr_matrix.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,7 +96,7 @@ void init_vec(DATATYPE * dence_vec_ptr, const int data_num , const DATATYPE data
     }
 }
 template<typename T>
-void check_equal(const T * v1, const T * v2, const int num ) {
+bool check_equal(const T * v1, const T * v2, const int num ) {
     bool flag = true;
     for( int i = 0 ; i < num ; i++ ) {
         if( (v1[i]-v2[i]) > 1e-3 || (v2[i]-v1[i]) > 1e-3 ) {
@@ -107,6 +108,7 @@ void check_equal(const T * v1, const T * v2, const int num ) {
         std::cout<<"Correct"<<std::endl;
     else 
         std::cout<<"False"<<std::endl;
+    return flag;
 }
 
 template<typename T>
@@ -118,79 +120,67 @@ void print_vec( T * data_ptr, const int num ) {
 }
 //#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
-    #if defined LITTEL_CASE2
-        PageRankStructure page_rank_structure = little_test2();
-        PageRankStructurePtr  page_rank_structure_ptr = & page_rank_structure;
+    #ifdef LITTEL_CASE
+        csrSparseMatrix sparseMatrix = little_test();
+        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
+    #elif defined LITTEL_CASE2
+
+        csrSparseMatrix sparseMatrix = little_test2(1024 ,1024);
+        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
     #else
         if(argc <= 1 ) {
             printf("Erro: You need to modify a file to read\n");
             return 0;
         }
-        PageRankStructurePtr page_rank_structure_ptr = test_read( argv[1]);
+        csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
     #endif
-   
-    PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
-    float * sum = page_rank_structure_ptr->sum;
+  
+    
+    DATATYPE * data_ptr = sparseMatrixPtr->data_ptr;
+    int * column_ptr = sparseMatrixPtr->column_ptr;
+    int * row_ptr = sparseMatrixPtr->row_ptr;
 
-    float * rank = page_rank_structure_ptr->rank;
+    const int data_num = sparseMatrixPtr->data_num;
+    const int row_num = sparseMatrixPtr->row_num;
+    const int column_num = sparseMatrixPtr->column_num;
+    DATATYPE * x_array = SIMPLE_MALLOC( DATATYPE , column_num );
+    DATATYPE * y_array = SIMPLE_MALLOC( DATATYPE, row_num );
+    DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
+    
+    DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
+    init_vec(x_array,column_num,1);
+//    init_vec( x_array, column_num , 1 ,true);
+    init_vec( y_array, row_num , 0 );
+    init_vec( y_array_bak, row_num , 0 );
 
-    int * n1 = page_rank_structure_ptr->n1;
-
-    int * n2 = page_rank_structure_ptr->n2;
-    int * nneibor = page_rank_structure_ptr->nneibor;
-    int nedges = page_rank_structure_ptr->nedges;
-    int nnodes = page_rank_structure_ptr->nnodes;
-    float * sum_bak = SIMPLE_MALLOC( float, nnodes );
-
-    float * sum_time = SIMPLE_MALLOC( float, nnodes );
+    init_vec( y_array_time, row_num , 0 );
 
 
-    int nedges_pack_num = nedges / VECTOR;
-    ShuffleIndexPtr shuffle_index_ptr = (ShuffleIndexPtr) _mm_malloc(sizeof(ShuffleIndex)*4*nedges_pack_num,64);
     PageRankFuseAll page_rank_fuse_all;
 
-    int *  mask_vec = (int*)malloc(sizeof(int)*nedges_pack_num);
-    int addr_num[MASK_NUM];
-    page_rank_fuse_all.compiler( shuffle_index_ptr, mask_vec, nedges_pack_num ,n2, addr_num);
-
-
-
-
-
-    for( int i = 0 ; i < nnodes ; i++ )
-        sum_bak[i] = sum[i];
-    for( int i = 0 ; i < nnodes ; i++ )
-        sum_time[i] = sum[i];
+    page_rank_fuse_all.compiler( row_ptr, column_ptr, row_num, column_num  );
 
     Timer::startTimer("aot");
-    for(int j=0;j<nedges;j++) {
-      int nx = n1[j];
-      int ny = n2[j];
-      sum_bak[ny] += rank[nx] / nneibor[nx];
-    }
+        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
+
     Timer::endTimer("aot");
 
     Timer::printTimer("aot");
+    page_rank_fuse_all( y_array, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
-    LOG(INFO) << "After Calc\n";
+    if(!check_equal( y_array_bak, y_array, row_num )) {
+        return 1;
+    }
+     for( int i = 0 ; i < 50 ; i++ )
+        page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
-    fflush(stdout);
-
-    page_rank_fuse_all( sum,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
-    for( int i = 0 ; i < 50 ; i++ )
-
-        page_rank_fuse_all( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
+#define TIMES 100
     Timer::startTimer("jit");
-#define     TIMES 1
-    for( int i = 0 ; i < TIMES; i++ )
-
-        page_rank_fuse_all( sum_time,n1,n2,rank,nneibor,(char*)shuffle_index_ptr );
+     for( int i = 0 ; i < TIMES ; i++ )
+        page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
-#undef TIMES
-    LOG(INFO) << "After Calc\n";
-//    print_vec(y_array,row_num); 
-    check_equal( sum,sum_bak,nnodes );
+
     return 0;
 }

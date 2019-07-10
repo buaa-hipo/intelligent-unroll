@@ -5,32 +5,30 @@
 //#include "llvm_lib/llvm_log.h"
 //#include "llvm_lib/llvm_print.hpp"
 #include "csr_matrix.h"
-
+#include "bit2addr.h"
+#include "analyze.h"
 StateMent* CombinStatVec( const std::vector<StateMent*> &stat_vec ) ;
 
-    int generate_mask( int * index ) ;
 
 class PageRankStateMent : StateMent{
-    Varience * sum_var_;
-    Varience * n1_var_;
-    Varience * n2_var_;
-    Varience * rank_var_;
-    Varience * nneibor_var_;
-    
-    Varience * shuffle_index_var_;
-    
-    Varience * mask_addr_;
 
-    Varience * sum_var_v_;
-    Varience * n1_var_v_;
-    Varience * n2_var_v_;
-    Varience * rank_var_v_;
-    Varience * nneibor_var_v_;
-    
-    Varience * shuffle_index_var_v_;
-    Varience * nneibor_ptr_v_;
-    Varience * sum_ptr_v_;
-    Varience * rank_ptr_v_;
+    Varience * y_ptr_var_;
+    Varience * x_ptr_var_;
+    Varience * data_ptr_var_;
+    Varience * column_ptr_var_;
+    Varience * row_ptr_var_;
+    Varience * row_num_var_;
+    Varience * row_ptr_ptr_var_;
+    Varience * index_ptr_ptr_var_;
+
+    Varience * y_v_ptr_var_;
+    Varience * x_v_ptr_var_;
+    Varience * data_v_ptr_var_;
+    Varience * column_v_ptr_var_;
+
+    Varience * y_ptr_v_var_;
+    Varience * x_ptr_v_var_;
+
     FuncStatement * func_state_ptr_;
     StateMent * init_state_;
 
@@ -38,8 +36,8 @@ class PageRankStateMent : StateMent{
     public:
     PageRankStateMent(  ) ;
 
-    StateMent * get_element(StateMent * index ,int mask) ;
-    void make( int * shuffle_num_vec,int mask_num,int * addr_num );
+    StateMent * get_element(StateMent * index , Varience * y_addr, const Mask2& mask_para) ;
+    void make(const std::map<Mask2,int>&mask_num_map );
 
     FuncStatement * get_function() ;
 };

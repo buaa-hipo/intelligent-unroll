@@ -2,7 +2,7 @@
 #define SMALL_CASE_HPP
 //dense
 #include "util.h"
-PageRankStructure little_test2( ) {
+/*PageRankStructure little_test2( ) {
     #define NEDGES 16
     #define NNODES 16
     PageRankStructure page_rank_structure;
@@ -38,5 +38,5 @@ PageRankStructure little_test2( ) {
     #undef NNODES
     return page_rank_structure;
 }
-
+*/
 #endif

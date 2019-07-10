@@ -1,7 +1,7 @@
 #ifndef TYPE_HPP
 #define TYPE_HPP
 #include "configure.hpp"
-typedef enum {FLOAT, DOUBLE, INT, VOID,BOOL,INT8 } DataType;
+typedef enum {FLOAT = 0, DOUBLE = 1, INT = 2, BOOL=3,INT8=4,PTR=5,VOID=6} DataType;
 #define NOT_VEC (1)
 #include <sstream>
 #include <string>
@@ -12,7 +12,7 @@ class Type {
     int lanes_;
     Type * pointer2type_;
     public:
-    Type( Type * pointer2type, int lanes ) : pointer2type_(pointer2type), lanes_(lanes) {
+    Type( Type * pointer2type, int lanes ) : data_type_(PTR),pointer2type_(pointer2type), lanes_(lanes) {
     }
     Type(DataType data_type,  int lanes ) : data_type_(data_type),lanes_(lanes){ 
         pointer2type_ = nullptr;
@@ -21,7 +21,6 @@ class Type {
         pointer2type_ = nullptr;
     }
     DataType get_data_type()const {
-        CHECK(pointer2type_==nullptr) << "type is a pointer";
         return data_type_;
     }
     void set_lanes(const int lanes) {
@@ -118,16 +117,15 @@ extern Type __int8;
 
  extern Type __float_v;
  extern Type __float_v_ptr;
- extern Type __double_pointer_v ;
+ extern Type __double_ptr_v ;
 
- extern Type __int_vector_type;
- extern Type __double_vector_type;
  extern Type __double_v;
  extern Type __bool_v ;
  extern Type __int_v ;
  extern Type __int8_v;
 
- extern Type __double_v_pointer;
+
+ extern Type __double_v_ptr;
  extern Type __int_v_ptr;
  extern Type __float_ptr_v ;
  extern Type __int8_v_ptr;

@@ -9,6 +9,7 @@
 #include <set>
 extern std::map<std::string,int>  classname_typeid_map;
 int GetTypeId( std::string class_name );
+
 class StateMent {
     protected:
     Type type_;
@@ -525,55 +526,108 @@ class Gather: public Expr{
 
 class Load : public Expr {
     StateMent * addr_;
-
+    StateMent * mask_;
+    bool has_mask_;
+    bool is_alined_;
     protected:
-    Load( StateMent * addr):addr_(addr) {
-
+    Load( StateMent * addr,bool is_alined):addr_(addr),is_alined_(is_alined) {
+            has_mask_ = false;
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
     }
+    Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask) {
+            has_mask_ = true;
+            Type * type_ptr_tmp = &addr->get_type();
+            CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
+            type_ = Type( *type_ptr_tmp->get_pointer2type());
+    }
+
     public:
 
     static constexpr const char* class_name_ = "load";
-    static StateMent * make( StateMent * addr) {
-        StateMent * stat_ptr = new Load( addr );
+    static StateMent * make( StateMent * addr,bool is_alined = false) {
+        StateMent * stat_ptr = new Load( addr ,is_alined);
         return stat_ptr;
     }
+    static StateMent * make( StateMent * addr, StateMent * mask,bool is_alined = false) {
+        StateMent * stat_ptr = new Load( addr,mask, is_alined );
+        return stat_ptr;
+    }
+
     virtual std::string get_class_name() {
         return class_name_;
     }
     StateMent * get_addr() {
         return addr_;
     } 
+    bool has_mask() const {
+        return has_mask_;
+    }
+
+    bool get_is_aligned() const {
+        return is_alined_;
+    }
+    StateMent * get_mask() const {
+        return mask_;
+    }
 };
 class Store :public StateMent {
     StateMent * addr_;
     StateMent * data_;
-
+    StateMent * mask_;
+    bool is_alined_ ;
+    bool has_mask_;
     protected:
-    Store( StateMent * addr, StateMent * data ) : addr_(addr),data_(data){
+    Store( StateMent * addr, StateMent * data ,bool is_alined) : addr_(addr),data_(data),is_alined_(is_alined),has_mask_(false){
+        type_ = data->get_type();
     }
+
+    Store( StateMent * addr, StateMent * data ,StateMent * mask,bool is_alined) : addr_(addr),data_(data),mask_(mask),is_alined_(is_alined),has_mask_(true){
+        
+        type_ = data->get_type();
+    }
+
     public:
 
     static constexpr const char* class_name_ = "store";
-    static StateMent * make(StateMent * addr,StateMent * data) {
+    static StateMent * make(StateMent * addr,StateMent * data,StateMent * mask, bool is_alined=false) {
         const Type & addr_type = addr->get_type();
         const Type & data_type = data->get_type();
         CHECK( (*addr_type.get_pointer2type()) == data_type ) << addr_type << " <-> " << data_type << "does not match\n";
-        StateMent * stat_ptr = new Store( addr,data );
+        StateMent * stat_ptr = new Store( addr,data ,mask,is_alined);
+        return stat_ptr;
+    }
+
+    static StateMent * make(StateMent * addr,StateMent * data, bool is_alined=false) {
+        const Type & addr_type = addr->get_type();
+        const Type & data_type = data->get_type();
+        CHECK( (*addr_type.get_pointer2type()) == data_type ) << addr_type << " <-> " << data_type << "does not match\n";
+        StateMent * stat_ptr = new Store( addr,data ,is_alined);
         return stat_ptr;
     }
     virtual std::string get_class_name() {
         return class_name_;
+    }
+    virtual Type& get_type() {
+        return type_;
     }
     StateMent * get_addr() const {
         return addr_;
     } 
     StateMent * get_data() const {
         return data_;
-    } 
+    }
+    bool has_mask() const {
+        return has_mask_;
+    }
 
+    bool get_is_aligned() const {
+        return is_alined_;
+    }
+    StateMent * get_mask() const {
+        return mask_;
+    }
 };
 
 class Shuffle : public Expr {
@@ -583,7 +637,7 @@ class Shuffle : public Expr {
     protected:
     Shuffle( StateMent *v1,StateMent *v2, StateMent *index ) : v1_(v1),v2_(v2),index_(index) {
         CHECK( v1->get_type() == v2->get_type()) << "the type of v1 and v2 is not equal\n";
-        CHECK( index->get_type() == __int_vector_type ) << "the lanes of index is not equal";
+        CHECK( index->get_type() == __int_v ) << "the lanes of index is not equal";
         type_ = v1->get_type();
     }
     public:
@@ -793,4 +847,6 @@ BINARY(Div);
 BINARY(Minus);
 BINARY(Mul);
 BINARY(Add);
+
+StateMent* CombinStatVec( const std::vector<StateMent*> &stat_vec );
 #endif

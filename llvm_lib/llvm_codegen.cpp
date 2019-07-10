@@ -1,4 +1,12 @@
 #include "llvm_codegen.hpp"
+
+    int GetBasicTypeSize( StateMent * v ) {
+        const Type & state_type = v->get_type();
+        DataType data_type = state_type.get_data_type() ;
+        int type_size[] = {sizeof(float),sizeof(double),sizeof(int),
+                           sizeof(bool),sizeof(int8_t),sizeof(void*)};
+        return type_size[data_type];
+    }
     llvm::Type * LLVMCodeGen::Type2LLVMType(const Type & type) {
         if( type == __int_v ) { 
             return llvm::VectorType::get( t_int_,VECTOR ); 
@@ -18,11 +26,11 @@
             return t_int_->getPointerTo()->getPointerTo();
         } else if(type == __bool_v){
             return t_bool_vec_;
-        } else if(type == __double_v_pointer){
+        } else if(type == __double_v_ptr){
             return t_double_vec_p_;
         } else if( type == __int_v_ptr) {
             return t_int_vec_p_; 
-        } else if(type == __double_pointer_v) {
+        } else if(type == __double_ptr_v) {
             return t_double_ptr_vec_;
         } else if( type == __float_v ){ 
             return t_float_vec_;
@@ -380,18 +388,57 @@ llvm::Value * LLVMCodeGen::CodeGen_(Load * stat) {
 
     llvm::Value * addr_value = CodeGen( stat->get_addr());
 
+    llvm::Value * res;
+    const int basic_type_size = GetBasicTypeSize( stat );
+    if( stat->has_mask() ) {
 
-    llvm::Value * ret = build_ptr_->CreateAlignedLoad( addr_value , alinements_, false);
+        llvm::Value * mask_value = CodeGen( stat->get_mask());
+        if( stat->get_is_aligned() ) {
+            res = build_ptr_->CreateMaskedLoad( addr_value, alinements_, mask_value );
+        } else {
 
-//        Value * ret = build_ptr_->CreateLoad( addr_value );
-        return ret;
+            res = build_ptr_->CreateMaskedLoad( addr_value, basic_type_size, mask_value );
+        }
+    } else {
+        if( stat->get_is_aligned() ) {
+            res = build_ptr_->CreateAlignedLoad(  addr_value, alinements_, false);
+        } else {
+        
+            res = build_ptr_->CreateAlignedLoad(  addr_value, basic_type_size, false);
+            //res = build_ptr_->CreateLoad( addr_value);
+        }
+
     }
+
+    return res;
+}
 llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
 
     llvm::Value * addr_value = CodeGen( stat->get_addr());
     llvm::Value * data_value = CodeGen( stat->get_data());
-        return build_ptr_->CreateAlignedStore( data_value, addr_value, alinements_, false);
+    llvm::Value * res;
+     
+    int basic_type_size = GetBasicTypeSize( stat );
+    if( stat->has_mask() ) {
+
+        llvm::Value * mask_value = CodeGen( stat->get_mask() );
+        if( stat->get_is_aligned() ) {
+            res = build_ptr_->CreateMaskedStore( data_value,addr_value, alinements_, mask_value );
+        } else {
+
+            res = build_ptr_->CreateMaskedStore( data_value,addr_value, basic_type_size, mask_value );
+        }
+    } else {
+        if( stat->get_is_aligned() ) {
+            res = build_ptr_->CreateAlignedStore( data_value, addr_value, alinements_, false);
+        } else {
+        
+            res = build_ptr_->CreateAlignedStore( data_value, addr_value, basic_type_size, false);
+            //res = build_ptr_->CreateStore( data_value, addr_value, false);
+        }
+
     }
+}
 llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
     llvm::Value * v1_value = CodeGen(stat->get_v1());
 

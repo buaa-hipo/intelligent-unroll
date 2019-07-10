@@ -4,82 +4,115 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mm_malloc.h>
-int analyze(const int * vec ,ShuffleIndexPtr shuffle_index_ptr ) {
-    int max_len = 1;
-    for( int i = 0 ; i < VECTOR; i++ ) {
-        int value = vec[i];
-        int tmp_max_len = 1;
-        for( int j = i + 1 ; j < VECTOR ; j++ ) {
-            if(vec[j] == value)
-                tmp_max_len++;
-        }
-        max_len = tmp_max_len > max_len? tmp_max_len:max_len;
-    }
-    int num ;
-    if( 0x8 & (max_len - 1) ) {
-        num = 4;
-    } else if(0x4 & (max_len- 1)) {
-        num = 3;
-    } else if(0x2 & (max_len - 1)) {
-        num = 2;
-    } else if(0x1 & (max_len - 1)){
-        num = 1;
-    } else {
-        num = 0;
-    }
-    int has_reduce = 0x0;
-    for( int i = 0 ; i < num ; i++ ) {
-        char * shuffle_index_ptr_tmp = (char*)&shuffle_index_ptr[i];    
-        
-        for( int i = 0 ; i < VECTOR ; i++ ) {
-            int value = vec[i];
-            bool has_find = false;
+#include <vector>
+#include "log.h"
 
-            if( (has_reduce & (0x1<<i)) == 0 ) {
-            for( int j = i + 1 ; j < VECTOR ; j++ ) {
-                if(value == vec[j]&&(( has_reduce &(0x1<<j))==0) ) {
-                    has_find = true;
-                    has_reduce |= (0x1<<j);
-                    shuffle_index_ptr_tmp[i] = j;
-                    break;
+void AnalyzeGetMask2( int * &row_begin_ptr , Mask2 * &mask_ptr, int & vec_num, int * row_ptr , int * column_ptr, const int row_num, const int column_num) {
+    std::vector<Mask2*> mask_vec;
+    std::vector<int> row_begin_vec;
+    int row_begin = 0;
+    int last_num = 0 ;
+    int mask = 0x1;
+    int num;
+    for( int i = 0 ; i < row_num ; i++ ) {
+
+        while( i < row_num ) {
+            int cur_num = row_ptr[ i + 1 ] - row_ptr[ i ];
+            if( cur_num + last_num >= VECTOR ) {
+                if( last_num != 0 ) {
+                    num = 1;
+                    Mask2 * mask_tmp = new Mask2( num , mask );
+                    mask_vec.push_back( mask_tmp ) ;
+                    row_begin_vec.push_back( row_begin );
                 }
-            }
-            }
-            if(!has_find) {
-               shuffle_index_ptr_tmp[i] = VECTOR; 
+                
+                int top_num ;
+                if( last_num != 0 )
+                    top_num = VECTOR - last_num ;
+                else 
+                    top_num = 0;
+                num = (cur_num - top_num) / VECTOR ;
+                if( num > 0 ) {
+                    int middle_num = num * VECTOR;
+                    Mask2 * mask_tmp = new Mask2( num , 0x1);
+                    row_begin = i;
+                    row_begin_vec.push_back( row_begin );
+                    mask_vec.push_back( mask_tmp ) ;
+                    mask = 0x1 ;
+
+                    last_num = cur_num - middle_num - top_num;
+                } else {
+                    mask = 0x1;
+                    last_num = cur_num - top_num;
+                }
+                if( last_num != 0 ) {
+                    mask |= ( 0x1 << last_num);
+                    row_begin = i;
+                } else {
+                    row_begin = i + 1;
+                }
+
+                break;
+            } else {
+                last_num += cur_num;
+                mask |= ( 0x1 << last_num );
+                i++;
             }
         }
     }
-    return num;
+    const int vec_data_num = mask_vec.size();
+    mask_ptr = new Mask2[vec_data_num];
+    row_begin_ptr = ( int * ) malloc( sizeof(int) * vec_data_num);
+    for( int i = 0 ; i < vec_data_num ; i++ ) {
+        mask_ptr[i] = *mask_vec[i];
+        row_begin_ptr[i] = row_begin_vec[i];
+    }
+    vec_num = vec_data_num;
 }
-int** Analyze( ShuffleIndexPtr shuffle_index_ptr , int * mask_vec,int nedges_pack_num, const int * n2,int * addr_num ) {
-    int ** addr = (int**)malloc(sizeof(int*) * MASK_NUM );
-    for( int i = 0 ; i < MASK_NUM ; i++ ) 
-        addr_num[i] = 0;
-    for(int j=0 , j_pack = 0 ;j_pack < nedges_pack_num ;j_pack++, j+=VECTOR) {
-        const int *ny = &n2[j];
-        int num = analyze( ny , &shuffle_index_ptr[j_pack*4]);
-        mask_vec[j_pack] = num;
-        addr_num[num]++;
+
+
+void Analyze(  std::map<Mask2, std::pair<std::vector<int>,std::vector<int>>> &mask_map, std::map<Mask2 , int> & mask_num_map, int & mask_num ,  int * row_ptr , int * column_ptr, const int row_num, const int column_num) {
+    int * row_begin_ptr;
+    Mask2 * mask_ptr;
+    int vec_num;
+    int mask_num_tmp = 0;
+    AnalyzeGetMask2( row_begin_ptr, mask_ptr, vec_num, row_ptr, column_ptr, row_num, column_num );
+    Show( mask_ptr, vec_num );
+    for( int i = 0 ; i < vec_num; i++ ) {
+        auto it = mask_map.find( mask_ptr[i] );
+        if( it == mask_map.end() ) {
+            mask_map[ mask_ptr[i] ] = std::make_pair(std::vector<int>(1,row_begin_ptr[i]) , std::vector<int>(1,i));
+            mask_num_map[ mask_ptr[i] ] = 1;
+            mask_num_tmp++;
+        } else {
+            (it->second).first.push_back(row_begin_ptr[i]);
+
+            (it->second).second.push_back(i);
+            mask_num_map[mask_ptr[i]]++;
+        }
     }
-    for( int i = 0 ; i < MASK_NUM ; i++ ) { 
-        addr[i] = (int*)_mm_malloc(sizeof(int)*addr_num[i],64);
-        addr_num[i] = 0;
-    }
-    for( int j = 0 ; j < nedges_pack_num ; j++ ) {
-        int mask = mask_vec[j];
-        int index = addr_num[mask];
-        addr[mask][index] = j;
-        addr_num[mask]++;
-    }
-    for( int i = 0 ; i < MASK_NUM ; i++ ) {
-        printf("%d:%d\n",i,addr_num[i]);
-       // for(int j = 0 ; j < addr_num[i]; j++) 
-     //       printf("%d ",addr[i][j]);
-        printf("\n");
-    }
-    return addr;
+    mask_num = mask_num_tmp;
 }
+void Show( Mask2 * mask_ptr, const int mask_num ) {
+    std::map<Mask2, int> mask_map;
+    int debug_i = 0 ;
+    for( int i = 0 ; i < mask_num; i++ ) {
+        auto it = mask_map.find( mask_ptr[i] );
+        if( it == mask_map.end() ) {
+            mask_map[mask_ptr[i]] = 1;
+        } else {
+            it->second++;
+        }
+    }
+    int num = 0 ;
+    for( auto it = mask_map.begin(); it != mask_map.end(); it++ ) {
+        num++;
+        std::cout << it->first << " " << it->second << "\n"; 
+    }
+    std::cout << num << std::endl;
+}
+
+
 
 
 

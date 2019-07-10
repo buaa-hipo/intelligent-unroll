@@ -1,14 +1,14 @@
 CC=g++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags`  
 
-CFLAGS=-std=c++11 -O3 -ffast-math  `llvm-config --cxxflags` -frtti 
+CFLAGS=-std=c++11 -O3 -ffast-math  `llvm-config --cxxflags` -frtti -Ibit2addr/ 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
 LD=g++ 
 LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11
  
 
 all: sum
-LKFILE= Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o analyze.o element.o sum.o 
+LKFILE= Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o analyze.o element.o sum.o bit2addr.o
 sum: $(LKFILE)
 	$(LD) $^ $(LDFLAGS) -o $@
 
@@ -36,11 +36,14 @@ csr_matrix.o:csr_matrix.cpp
 	$(CC) $(CFLAGS) $< -c -o $@
 
 element.o:element.cpp
-	$(CC) -std=c++11  $< -c -o $@
+	$(CC) -Ibit2addr/ -std=c++11  $< -c -o $@
 statement_print.o:statement_print.cpp statement.hpp
 	$(CC) $(CFLAGS) $< -c -o $@
 
 csr5_statement.o:csr5_statement.cpp statement.hpp
+	$(CC) -Ibit2addr/ -std=c++11  $< -c -o $@
+
+bit2addr.o:bit2addr/bit2addr.cpp
 	$(CC) -std=c++11  $< -c -o $@
 sum.bc: sum
 	./sum 0 0
