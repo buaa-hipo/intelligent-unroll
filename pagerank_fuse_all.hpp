@@ -38,13 +38,10 @@ class PageRankFuseAll : public UnrollFunctionSpec {
             }
             int jj = 0 ;
             for( auto it : index_vec) {
-
-    //            std::cout << it << " ";
                 index_ptr_ptr_[i][jj] = it;
                 jj++;
             }
             i++;
-//            std::cout <<std::endl;
         }
     }
 

@@ -135,33 +135,52 @@ StateMent * PageRankStateMent::get_element(StateMent * index , Varience * y_addr
                 Varience * new_index = new Varience( __int );
                 Varience * fast_res = new  Varience( __double_v );
                 Varience * y_data = new Varience(__double);
-                StateMent * init_state = LetStat::make( fast_res , dzero_vec_const,false);
 
-                StateMent * for_state = For::make(const_zero , const_one, const_end);
-
-                StateMent * inc_i = dynamic_cast<For*>(for_state)->get_var();
-                StateMent * new_index_state = LetStat::make( new_index ,Add::make( inc_i, index ));
                 StateMent * y_addr_state = LetStat::make(y_data , Load::make( y_addr ));
-                StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make( data_v_ptr_var_, index ),true ) ); 
+                state_vec.push_back(y_addr_state);
+                if(circle_num == 1){
+                    StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make( data_v_ptr_var_, index ),true ) ); 
 
-                StateMent * index_state = LetStat::make( index_simd, Load::make( IncAddr::make( column_v_ptr_var_, index ),true ) ); 
+                    StateMent * index_state = LetStat::make( index_simd, Load::make( IncAddr::make( column_v_ptr_var_, index ),true ) ); 
             
-                StateMent * x_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const )  ); 
+                    StateMent * x_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const )  ); 
 
             
-                StateMent * fmadd_state = LetStat::make(fast_res,  Add::make(fast_res, Mul::make( data_simd , x_simd ) ),false);  
-                
-                std::vector<StateMent*> for_state_vec = { y_addr_state,new_index_state, data_state, index_state, x_state, fmadd_state };
-                StateMent * inner_for_state = CombinStatVec( for_state_vec );
-                
-                dynamic_cast<For*>(for_state)->SetState(inner_for_state);
-                
-                state_vec.push_back( init_state );state_vec.push_back( for_state );
+                    StateMent * fmadd_state = LetStat::make(fast_res, Mul::make( data_simd , x_simd ) ,false);  
+                    state_vec.push_back( data_state );
 
+                    state_vec.push_back( index_state );
+                    state_vec.push_back( x_state );
+                    state_vec.push_back( fmadd_state );
+                } else {
 
+                    StateMent * init_state = LetStat::make( fast_res , dzero_vec_const,false);
+                    StateMent * for_state = For::make(const_zero , const_one, const_end);
+                     
+                    StateMent * inc_i = dynamic_cast<For*>(for_state)->get_var();
+                    StateMent * new_index_state = LetStat::make( new_index ,Add::make( inc_i, index ));
+                    StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make( data_v_ptr_var_, new_index ),true ) ); 
+
+                    StateMent * index_state = LetStat::make( index_simd, Load::make( IncAddr::make( column_v_ptr_var_, new_index ),true ) ); 
+            
+                    StateMent * x_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const )  ); 
+
+            
+                    StateMent * fmadd_state = LetStat::make(fast_res,  Add::make(fast_res, Mul::make( data_simd , x_simd ) ),false);  
+                
+                    std::vector<StateMent*> for_state_vec = { new_index_state, data_state, index_state, x_state, fmadd_state };
+                    StateMent * inner_for_state = CombinStatVec( for_state_vec );
+                
+                    dynamic_cast<For*>(for_state)->SetState(inner_for_state);
+                     
+                    state_vec.push_back( init_state );state_vec.push_back( for_state );
+
+                }
                 StateMent * store_state = Store::make( y_addr ,Add::make(y_data ,Reduce::make( fast_res )));
                 state_vec.push_back(store_state); 
+
             }
+            
 
             StateMent * res_state = CombinStatVec( state_vec );
             return res_state;

@@ -55,27 +55,43 @@
             StateMent * index_ptr_state = LetStat::make( index_ptr, Load::make(IncAddr::make( index_ptr_ptr_var_, const_i )) ); 
             StateMent * row_ptr_state = LetStat::make( row_ptr, Load::make(IncAddr::make( row_ptr_ptr_var_, const_i )) ); 
 
-            StateMent * push_state = For::make(const_zero , const_one, const_end);
-            StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
+            if(circle_num == 1) {
+                StateMent * index_state = LetStat::make( index , Load::make( index_ptr) );
+                StateMent * row_index_state = LetStat::make( row_index , Load::make( row_ptr )) ;
+                StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
 
-            StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make( index_ptr ,inc_i)) );
-            StateMent * row_index_state = LetStat::make( row_index , Load::make(IncAddr::make( row_ptr ,inc_i)) );
-//            StateMent * debug_print = Print::make( row_index ); 
-            StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
-
-            StateMent * elem_state = get_element( index, y_offset_ptr, mask ); 
+                StateMent * elem_state = get_element( index, y_offset_ptr, mask ); 
             
-            StateMent * inner_for_state = Block::make(y_addr_state,elem_state);
-            inner_for_state = Block::make(index_state , inner_for_state );
+                StateMent * inner_for_state = Block::make(y_addr_state,elem_state);
+                inner_for_state = Block::make(index_state , inner_for_state );
 
-  //          inner_for_state = Block::make( debug_print, inner_for_state );
-            inner_for_state = Block::make( row_index_state , inner_for_state );
-            dynamic_cast<For*>(push_state)->SetState(inner_for_state);
+                inner_for_state = Block::make( row_index_state , inner_for_state );
             
-           push_state = Block::make( index_ptr_state, push_state);
-           push_state = Block::make( row_ptr_state, push_state);
+                inner_for_state = Block::make( index_ptr_state, inner_for_state);
+                inner_for_state = Block::make( row_ptr_state, inner_for_state);
 
-           state_vec_.push_back( push_state );
+                state_vec_.push_back( inner_for_state );
+            } else {
+                StateMent * push_state = For::make(const_zero , const_one, const_end);
+                StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
+
+                StateMent * index_state = LetStat::make( index , Load::make(IncAddr::make( index_ptr ,inc_i)) );
+                StateMent * row_index_state = LetStat::make( row_index , Load::make(IncAddr::make( row_ptr ,inc_i)) );
+                StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
+
+                StateMent * elem_state = get_element( index, y_offset_ptr, mask ); 
+            
+                StateMent * inner_for_state = Block::make(y_addr_state,elem_state);
+                inner_for_state = Block::make(index_state , inner_for_state );
+
+                inner_for_state = Block::make( row_index_state , inner_for_state );
+                dynamic_cast<For*>(push_state)->SetState(inner_for_state);
+            
+                push_state = Block::make( index_ptr_state, push_state);
+                push_state = Block::make( row_ptr_state, push_state);
+
+                state_vec_.push_back( push_state );
+            }
            i++;
         }
     }

@@ -168,9 +168,6 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("aot");
     page_rank_fuse_all( y_array, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
-    if(!check_equal( y_array_bak, y_array, row_num )) {
-        return 1;
-    }
      for( int i = 0 ; i < 50 ; i++ )
         page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
@@ -181,6 +178,9 @@ int main( int argc , char const * argv[] ) {
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
+    if(!check_equal( y_array_bak, y_array, row_num )) {
+        return 1;
+    }
 
     return 0;
 }
