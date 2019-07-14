@@ -158,7 +158,7 @@ int main( int argc , char const * argv[] ) {
 
     PageRankFuseAll page_rank_fuse_all;
 
-    page_rank_fuse_all.compiler( row_ptr, column_ptr, row_num, column_num  );
+    page_rank_fuse_all.compiler( row_ptr, column_ptr, row_num, column_num ,data_ptr);
 
     Timer::startTimer("aot");
         spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );

@@ -1,6 +1,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 #include <stdio.h>
+#include "mm_malloc.h"
 #define SCALAR double
 #define COLUMN_TYPE unsigned short int
 //#define COLUMN_TYPE int

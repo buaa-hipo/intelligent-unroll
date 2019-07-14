@@ -7,6 +7,8 @@ Type __double = Type( DOUBLE,  NOT_VEC );
 Type __double_ptr = Type( &__double,NOT_VEC);
 Type __int_ptr = Type( &__int,NOT_VEC);
 Type __int_ptr_ptr = Type( &__int_ptr,NOT_VEC);
+
+Type __double_ptr_ptr = Type( &__double_ptr,NOT_VEC);
 Type __float_ptr = Type( &__float, NOT_VEC);
 Type __int8_ptr = Type( &__int8,NOT_VEC);
 

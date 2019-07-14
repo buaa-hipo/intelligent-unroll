@@ -110,6 +110,7 @@ extern Type __int8;
  extern Type __double_ptr;
  extern Type __int_ptr ;
 
+ extern Type __double_ptr_ptr ;
  extern Type __int_ptr_ptr ;
  extern Type __float_ptr ;
  extern Type __int8_ptr;

@@ -24,7 +24,9 @@
             return t_int_->getPointerTo();
         } else if(type == __int_ptr_ptr) {
             return t_int_->getPointerTo()->getPointerTo();
-        } else if(type == __bool_v){
+        } else if( type == __double_ptr_ptr ){
+            return t_double_p_->getPointerTo();
+        } else if(type == __bool_v) {
             return t_bool_vec_;
         } else if(type == __double_v_ptr){
             return t_double_vec_p_;

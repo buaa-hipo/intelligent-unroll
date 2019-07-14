@@ -69,8 +69,6 @@ void AnalyzeGetMask2( int * &row_begin_ptr , Mask2 * &mask_ptr, int & vec_num, i
     }
     vec_num = vec_data_num;
 }
-
-
 void Analyze(  std::map<Mask2, std::pair<std::vector<int>,std::vector<int>>> &mask_map, std::map<Mask2 , int> & mask_num_map, int & mask_num ,  int * row_ptr , int * column_ptr, const int row_num, const int column_num) {
     int * row_begin_ptr;
     Mask2 * mask_ptr;
