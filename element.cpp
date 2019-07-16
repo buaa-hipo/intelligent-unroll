@@ -9,13 +9,34 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
         Varience * res_simd = new Varience(__double_v);
         std::vector<StateMent *> state_vec_tmp;
         StateMent * res_state = LetStat::make( res_simd , dzero_vec_const_ ,false);
+        Varience * x_simd[VECTOR];
+        StateMent * gather_state_ptr[VECTOR];
+        StateMent * column_state_ptr[VECTOR];
+        for( int i = 0 ; i < VECTOR ; i++ ) {
+            
+            Const * i_const = new Const( i);
+            Varience * column_simd = new Varience( __int_v);
+
+            x_simd[i] = new Varience(__double_v);
+            column_state_ptr[i] = LetStat::make( column_simd, Load::make( IncAddr::make(column_v_ptr, i_const),true ) ); 
+            gather_state_ptr[i] = LetStat::make( x_simd[i] , Gather::make( x_ptr_v_var_, column_simd , true_vec_const_ )  );
+//            state_vec_tmp.push_back(column_state);
+
+//            state_vec_tmp.push_back(gather_state);
+
+        }
+
         state_vec_tmp.push_back(res_state);
+
+        #define STEP 2
+        for( int i = 0 ; i < STEP ; i++ ) {
+            state_vec_tmp.push_back(column_state_ptr[i]);
+            state_vec_tmp.push_back(gather_state_ptr[i]);
+        }
         bool is_first = true;
         for( int i = 0 ; i < VECTOR ; i++ ) {
-            Varience * x_simd = new Varience(__double_v);
-            Varience * column_simd = new Varience( __int_v);
-//            Varience * row_simd = new Varience( __int_v );
             Varience * data_simd = new Varience(__double_v);
+//            Varience * row_simd = new Varience( __int_v );
 
             Const * i_const = new Const( i);
             if( i != 0 && (circle_mask & ( 1 << i )) != 0 ) {
@@ -39,17 +60,17 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
 
                 state_vec_tmp.push_back( res_state);
             }
-            StateMent * column_state = LetStat::make( column_simd, Load::make( IncAddr::make(column_v_ptr, i_const),true ) ); 
+            if( i < VECTOR - STEP ) {
+                state_vec_tmp.push_back(column_state_ptr[i+STEP]);
+                state_vec_tmp.push_back(gather_state_ptr[i+STEP]);
+            }
 
-            StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make(data_v_ptr,i_const),true ) ); 
-            StateMent * gather_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, column_simd , true_vec_const_ )  );
-        
-            StateMent * res_state = LetStat::make( res_simd , Add::make( Mul::make( x_simd , data_simd ),res_simd ),false);
+            StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make(data_v_ptr,i_const),true ) );
+
+                    
+            StateMent * res_state = LetStat::make( res_simd , Add::make( Mul::make( x_simd[i] , data_simd ),res_simd ),false);
             
-            state_vec_tmp.push_back(column_state);
-
             state_vec_tmp.push_back(data_state);
-            state_vec_tmp.push_back(gather_state);
             state_vec_tmp.push_back(res_state);
 
         }
