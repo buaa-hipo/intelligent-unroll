@@ -215,8 +215,10 @@ csrSparseMatrixPtr matrix_read_csr( const char * filename ) {
 
     //double gb = getB<int, VALUE_TYPE>(m, nnzA);
     //double gflop = getFLOP<int>(nnzA);
-//    for( int i = 0 ; i < m ; i++ ) 
-        //printf("%d %d\n",i, csrRowPtrA[i+1] - csrRowPtrA[i]);
+//    for( int i = 0 ; i < m ; i++ ) {
+//      printf("%d %d %d\n",i, csrRowPtrA[i],csrRowPtrA[i+1] - csrRowPtrA[i]);
+//    }
+
 //    exit(1);
     res->row_ptr = csrRowPtrA;
     res->column_ptr = csrColIdxA;

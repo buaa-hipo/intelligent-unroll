@@ -20,8 +20,8 @@ class PageRankStateMent : StateMent{
     ///parameter
     Varience * y_ptr_var_;
     Varience * x_ptr_var_;
-    Varience * data_ptr_var_;
-    Varience * column_ptr_var_;
+//    Varience * data_ptr_var_;
+//    Varience * column_ptr_var_;
     Varience * row_ptr_var_;
     Varience * row_num_var_;
     Varience * row_ptr_ptr_var_;
@@ -30,8 +30,8 @@ class PageRankStateMent : StateMent{
 
     Varience * y_v_ptr_var_;
     Varience * x_v_ptr_var_;
-    Varience * data_v_ptr_var_;
-    Varience * column_v_ptr_var_;
+//    Varience * data_v_ptr_var_;
+//    Varience * column_v_ptr_var_;
 
     Varience * y_ptr_v_var_;
     Varience * x_ptr_v_var_;

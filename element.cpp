@@ -302,7 +302,7 @@ StateMent * PageRankStateMent::GenerateReduceState(const Mask2 & mask, const int
     StateMent * data_ptr_var_inc_state = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, block_for_i) ) ;
 
     
-    StateMent * element_state = get_element( column_v_ptr_var_get_ , data_v_ptr_var_get_ , y_offset_ptr , mask , trans_addr_);
+    StateMent * element_state = get_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_);
     
     std::vector<StateMent*> inner_for_vec = { block_for_i_state, row_index_state,y_addr_state,column_ptr_var_inc_state,data_ptr_var_inc_state,element_state };
     dynamic_cast<For*>(push_state)->SetState( CombinStatVec( inner_for_vec ) );

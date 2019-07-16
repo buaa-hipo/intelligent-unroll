@@ -148,8 +148,8 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
     
     DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
-    init_vec(x_array,column_num,1);
-//    init_vec( x_array, column_num , 1 ,true);
+//    init_vec(x_array,column_num,1);
+    init_vec( x_array, column_num , 1 ,true);
     init_vec( y_array, row_num , 0 );
     init_vec( y_array_bak, row_num , 0 );
 

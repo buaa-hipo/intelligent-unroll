@@ -12,7 +12,14 @@ class Mask2{
     }
     Mask2( int num , int mask ) : num_(num),mask_(mask) {
     
-    }    
+    } 
+    bool can_block()const {
+    //    if( mask_ != 0x1 || (mask_==0x1 && num_==1) )
+        if( mask_ != 0x1 )
+            return true;
+        else
+            return false;
+    }
     inline bool operator<( const Mask2 & arg ) const {
         if( this->num_ < arg.num_ ) {
             return true;

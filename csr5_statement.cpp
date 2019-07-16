@@ -29,8 +29,8 @@
 
         y_ptr_var_ =  (*func_state_ptr_->get_args())[0];
         x_ptr_var_ =  (*func_state_ptr_->get_args())[1];
-        data_ptr_var_ = (*func_state_ptr_->get_args())[2];
-        column_ptr_var_ = (*func_state_ptr_->get_args())[3];
+//        data_ptr_var_ = (*func_state_ptr_->get_args())[2];
+//        column_ptr_var_ = (*func_state_ptr_->get_args())[3];
         row_ptr_var_ = (*func_state_ptr_->get_args() )[4];
         row_num_var_ = (*func_state_ptr_->get_args())[5];
         row_ptr_ptr_var_ = (*func_state_ptr_->get_args())[6];
@@ -39,8 +39,8 @@
 
         y_v_ptr_var_ = new Varience( __double_v_ptr );
         x_v_ptr_var_ = new Varience( __double_v_ptr );
-        data_v_ptr_var_ = new Varience( __double_v_ptr );
-        column_v_ptr_var_ = new Varience( __int_v_ptr );
+ //       data_v_ptr_var_ = new Varience( __double_v_ptr );
+//        column_v_ptr_var_ = new Varience( __int_v_ptr );
         
         y_ptr_v_var_ = new Varience( __double_ptr_v );
         x_ptr_v_var_ = new Varience( __double_ptr_v );
@@ -48,8 +48,8 @@
 ///////////////////init
         init_state_ = LetStat::make( y_v_ptr_var_, BitCast::make( y_ptr_var_ , __double_v_ptr ) );
         init_state_ = Block::make(init_state_, LetStat::make( x_v_ptr_var_ , BitCast::make( x_ptr_var_, __double_v_ptr) ));
-        init_state_ = Block::make(init_state_, LetStat::make( data_v_ptr_var_ , BitCast::make( data_ptr_var_, __double_v_ptr) )); 
-        init_state_ = Block::make(init_state_, LetStat::make( column_v_ptr_var_ , BitCast::make( column_ptr_var_, __int_v_ptr) ));
+//        init_state_ = Block::make(init_state_, LetStat::make( data_v_ptr_var_ , BitCast::make( data_ptr_var_, __double_v_ptr) )); 
+//        init_state_ = Block::make(init_state_, LetStat::make( column_v_ptr_var_ , BitCast::make( column_ptr_var_, __int_v_ptr) ));
 ////////////////broadcast
         init_state_ = Block::make(init_state_,LetStat::make( x_ptr_v_var_, BroadCast::make( x_ptr_var_) ));
         init_state_ = Block::make(init_state_,LetStat::make( y_ptr_v_var_, BroadCast::make( y_ptr_var_) ));
@@ -77,7 +77,8 @@
 //           state_vec_.push_back(Print::make( num_print ));
 
            StateMent * state ;
-           if( mask.mask_ != 0x1  ) {
+//           if( mask.mask_ != 0x1  ) {
+           if( mask.can_block() ) {
                state = GenerateMaskState( mask, circle_num, i );
            } else {
                state = GenerateReduceState( mask , circle_num ,i );
@@ -87,7 +88,6 @@
         }
     }
     FuncStatement * PageRankStateMent::get_function() {
-        LOG(INFO) << state_vec_.size();
         StateMent * state = CombinStatVec(state_vec_);
         state = Block::make( init_state_ , state );
         func_state_ptr_->set_state(state);

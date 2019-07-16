@@ -79,23 +79,29 @@ class PageRankFuseAll : public UnrollFunctionSpec {
              int * column_ptr = column_ptr_ptr_[i];
              double * data_ptr = data_ptr_ptr_[i];
              int * index_ptr = index_ptr_ptr_[i];
-             int j = 0 ,jj;
+             int * row_ptr = row_ptr_ptr_[i];
+             int j = 0 ;
+
+             LOG(INFO) << mask << " " << mask_num; 
              if( mask != 0x1 ) {
                  CHECK( inner_mask_num == 1 ) << "inner mask num should be 1\n";
                  if( j <= mask_num - VECTOR ) {
-                 for(  jj =0 ; j <= mask_num - VECTOR ;jj++, j += VECTOR) {
+                 for(  ; j <= mask_num - VECTOR ; j += VECTOR) {
                      int * column_block_ptr = &column_ptr[j*VECTOR];
                      double * data_block_ptr = &data_ptr[j*VECTOR];
-                     int * index_block_ptr = &index_ptr[jj];
+                     const int * index_block_ptr = &index_ptr[ j ];
                            for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
-                                const int index = index_block_ptr[v_i]; 
+                                const int index = index_block_ptr[v_i];
                                 for( int w = 0 ; w < VECTOR ; w++ ) {
                                     column_block_ptr[ w * VECTOR + v_i ] = m_col_ptr[ index * VECTOR + w ];
                                     data_block_ptr[w * VECTOR + v_i] = m_data_ptr[ index * VECTOR + w ];
                                 }
+
                            }
+
+
                  }
-                 j -= VECTOR;
+//                 j -= VECTOR;
                  }
                 
              }
@@ -108,11 +114,12 @@ class PageRankFuseAll : public UnrollFunctionSpec {
 
                     for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
                         column_block_ptr[v_i] = m_col_ptr[ (index + inner_i) * VECTOR + v_i ];
-                        data_block_ptr[v_i] = m_data_ptr[(index + inner_i) * VECTOR + v_i];
+                        data_block_ptr[v_i]   = m_data_ptr[(index + inner_i) * VECTOR + v_i ];
                     }
                 }
              }
         }
+//        exit(1);
     }
     public:
 
@@ -129,7 +136,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
         PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
         page_rank_statement_ptr->make( mask_num_map_ );
         func_ptr_ = page_rank_statement_ptr->get_function();
-        std::cout<<func_ptr_->get_state();
+//        std::cout<<func_ptr_->get_state();
     }
      
     int operator() ( double * y_ptr, double * x_ptr, double * data_ptr, int * column_ptr, int * row_ptr , int row_num ) { 
