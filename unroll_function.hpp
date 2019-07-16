@@ -28,7 +28,7 @@ class UnrollFunction<R1(AnalyzeArgs...),R2( Args...), void(AddArgs...)> {
         llvm_module_ptr_->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
          
         func_ = llvm_module_ptr_->GetFunction("function");
-        LOG(INFO) << llvm_module_ptr_->GetSource( "asm" );
+        //LOG(INFO) << llvm_module_ptr_->GetSource( "asm" );
     }   
 };
 
