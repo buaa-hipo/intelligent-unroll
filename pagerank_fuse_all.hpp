@@ -82,7 +82,6 @@ class PageRankFuseAll : public UnrollFunctionSpec {
              int * row_ptr = row_ptr_ptr_[i];
              int j = 0 ;
 
-             LOG(INFO) << mask << " " << mask_num; 
              if( mask != 0x1 ) {
                  CHECK( inner_mask_num == 1 ) << "inner mask num should be 1\n";
                  if( j <= mask_num - VECTOR ) {
