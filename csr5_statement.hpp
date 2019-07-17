@@ -65,6 +65,8 @@ class PageRankStateMent : StateMent{
 
     StateMent * get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
     StateMent * get_shuffle_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
+
+    StateMent * get_single_reduce_element( Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
     void make(const std::map<Mask2,int>&mask_num_map );
 
     FuncStatement * get_function() ;
