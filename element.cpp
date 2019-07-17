@@ -10,18 +10,10 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
         std::vector<StateMent *> state_vec_tmp;
         StateMent * res_state = LetStat::make( res_simd , dzero_vec_const_ ,false);
         Varience * x_simd[VECTOR];
-        int zero_dv[ VECTOR * 2];
-        for( int i = 0 ; i < VECTOR * 2 ; i++ )
-            zero_dv[i] = 0;
-        
+     
         StateMent * gather_state_ptr[VECTOR];
         StateMent * column_state_ptr[VECTOR];
         Varience * column_dsimd ;
-        int shuffle_forward[VECTOR] = {0,1,2,3,4,5,6,7};
-        int shuffle_backward[VECTOR] = {8,9,10,11,12,13,14,15};
-        Const * shuffle_forward_const = new Const(shuffle_forward,VECTOR);
-        Const * shuffle_backward_const = new Const(shuffle_backward,VECTOR);
-        Const * zero_dv_const = new Const( zero_dv, VECTOR * 2 );
         for( int i = 0 ; i < VECTOR ; i++ ) {
             
             Const * i_const = new Const( i);
@@ -31,11 +23,11 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
             if( i % 2 == 0 ) {
                 column_dsimd = new Varience(__int_dv);
                 StateMent * load_col_state_tmp = LetStat::make( column_dsimd, Load::make( BitCast::make(IncAddr::make(column_v_ptr, i_const),__int_dv_ptr),true ) );
-                StateMent * shuffle_col_state_tmp = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const, shuffle_forward_const ) );
+                StateMent * shuffle_col_state_tmp = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const_, shuffle_forward_const_ ) );
                 column_state_ptr[i] = Block::make( load_col_state_tmp, shuffle_col_state_tmp );
             } else {
             
-                column_state_ptr[i] = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const, shuffle_backward_const ) );
+                column_state_ptr[i] = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const_, shuffle_backward_const_ ) );
             }
             gather_state_ptr[i] = LetStat::make( x_simd[i] , Gather::make( x_ptr_v_var_, column_simd , true_vec_const_ )  );
 //            state_vec_tmp.push_back(column_state);
@@ -110,7 +102,8 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
         state_vec_tmp.push_back( scatter_state_tmp );
         return CombinStatVec( state_vec_tmp );
 }
-StateMent * PageRankStateMent::get_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) {
+
+StateMent * PageRankStateMent::get_shuffle_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) {
         const int circle_num = mask_para.num_;
         const int circle_mask = mask_para.mask_;
                
@@ -151,8 +144,6 @@ StateMent * PageRankStateMent::get_element(Varience * column_ptr_inc_var, Varien
             shuffle_index_const_vec.push_back( new Const( reduce_addr_int+ i*VECTOR, VECTOR ) );
         }
 
-        Const * Four = new Const(4);
-
             Varience * x_simd = new Varience( __double_v );
 
             Varience * mul_simd = new Varience( __double_v );
@@ -167,8 +158,6 @@ StateMent * PageRankStateMent::get_element(Varience * column_ptr_inc_var, Varien
             Varience * y_v_addr = new Varience(__double_v_ptr);
             std::vector<StateMent*> state_vec;
 
-//            StateMent * print_state = Print::make(  dynamic_cast<Varience*>(index) );
-            if(  circle_mask != 0x1 ) {
 
                 StateMent * data_state = LetStat::make( data_simd, Load::make( data_ptr_inc_var ,true ) ); 
 
@@ -226,7 +215,32 @@ StateMent * PageRankStateMent::get_element(Varience * column_ptr_inc_var, Varien
 
 //                state_vec.push_back( print_state );
                  
-            } else {
+        return CombinStatVec(state_vec);
+}
+StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) {
+        const int circle_num = mask_para.num_;
+        const int circle_mask = mask_para.mask_;
+               
+        const int reduce_num = trans_addr.num;
+        const char * reduce_addr = trans_addr.addr;
+        Const * const_end = new Const( circle_num );
+        Const * Four = new Const(4);
+
+            Varience * x_simd = new Varience( __double_v );
+
+            Varience * mul_simd = new Varience( __double_v );
+
+            Varience * shuffle_simd = new Varience( __double_v );
+            Varience * compress_simd = new Varience( __double_v );
+            Varience * y_simd = new Varience( __double_v );
+
+            Varience * add_simd = new Varience( __double_v );
+            Varience * data_simd = new Varience( __double_v );
+            Varience * index_simd = new Varience( __int_v );
+            Varience * y_v_addr = new Varience(__double_v_ptr);
+            std::vector<StateMent*> state_vec;
+
+//            StateMent * print_state = Print::make(  dynamic_cast<Varience*>(index) );
                 Varience * new_index = new Varience( __int );
                 Varience * fast_res = new  Varience( __double_v );
                 Varience * y_data = new Varience(__double);
@@ -272,8 +286,6 @@ StateMent * PageRankStateMent::get_element(Varience * column_ptr_inc_var, Varien
                 }
                 StateMent * store_state = Store::make( y_addr ,Add::make(y_data ,Reduce::make( fast_res )));
                 state_vec.push_back(store_state); 
-
-            }
             
 
             StateMent * res_state = CombinStatVec( state_vec );
@@ -341,7 +353,7 @@ StateMent * PageRankStateMent::GenerateReduceState(const Mask2 & mask, const int
     StateMent * data_ptr_var_inc_state = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, block_for_i) ) ;
 
     
-    StateMent * element_state = get_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_);
+    StateMent * element_state = get_reduce_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_);
     
     std::vector<StateMent*> inner_for_vec = { block_for_i_state, row_index_state,y_addr_state,column_ptr_var_inc_state,data_ptr_var_inc_state,element_state };
     dynamic_cast<For*>(push_state)->SetState( CombinStatVec( inner_for_vec ) );
@@ -414,7 +426,7 @@ StateMent * PageRankStateMent::GenerateMaskState( const Mask2 & mask , const int
         
         StateMent * y_addr_state_spec = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
 
-        StateMent * element_state_spec = get_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_) ;
+        StateMent * element_state_spec = get_shuffle_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_) ;
 
         state_vec_tmp.push_back( column_ptr_var_inc_state_spec );
         state_vec_tmp.push_back( data_ptr_var_inc_state_spec );

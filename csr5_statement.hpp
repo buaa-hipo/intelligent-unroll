@@ -17,6 +17,10 @@ class PageRankStateMent : StateMent{
     Const * true_vec_const_; 
     Const * dzero_vec_const_; 
     Const * one_vec_const_;
+    Const * shuffle_forward_const_;
+    Const * shuffle_backward_const_;
+    Const * zero_dv_const_;
+
     ///parameter
     Varience * y_ptr_var_;
     Varience * x_ptr_var_;
@@ -59,7 +63,8 @@ class PageRankStateMent : StateMent{
     StateMent * GenerateMaskState( const Mask2 & mask , const int circle_num , const int mask_i ) ;
 //    StateMent * get_element(StateMent * index , Varience * y_addr, const Mask2& mask_para) ;
 
-    StateMent * get_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
+    StateMent * get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
+    StateMent * get_shuffle_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
     void make(const std::map<Mask2,int>&mask_num_map );
 
     FuncStatement * get_function() ;

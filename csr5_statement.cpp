@@ -23,6 +23,17 @@
         dzero_vec_const_ = new Const( dzero_vec , VECTOR );
 
         one_vec_const_ = new Const( one_vec , VECTOR );
+        int zero_dv[ VECTOR * 2];
+        for( int i = 0 ; i < VECTOR * 2 ; i++ )
+            zero_dv[i] = 0;
+         int shuffle_forward[VECTOR] = {0,1,2,3,4,5,6,7};
+        int shuffle_backward[VECTOR] = {8,9,10,11,12,13,14,15};
+        shuffle_forward_const_ = new Const(shuffle_forward,VECTOR);
+        shuffle_backward_const_ = new Const(shuffle_backward,VECTOR);
+        zero_dv_const_ = new Const( zero_dv, VECTOR * 2 );
+  
+
+
         std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr,__double_ptr_ptr  };
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
