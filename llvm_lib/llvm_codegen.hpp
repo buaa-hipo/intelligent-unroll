@@ -183,6 +183,8 @@ class LLVMCodeGen {
 
     Value * CodeGen_( DetectConflict * stat) ;
 
+    Value * CodeGen_(InsertElement * stat) ;
+    Value * CodeGen_(ExtractElement * stat) ;
     Value* CodeGen( StateMent * stat ) ;
 
     void AddFunction( FuncStatement * func_state ) ;

@@ -661,7 +661,19 @@ llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
     }
     return Null_;
 }
+llvm::Value * LLVMCodeGen::CodeGen_(InsertElement * stat) {
 
+    llvm::Value * to_value = CodeGen(stat->get_to());    
+    llvm::Value * from_value = CodeGen(stat->get_from());    
+    llvm::Value * index_value = CodeGen(stat->get_index());
+    return build_ptr_->CreateInsertElement( to_value, from_value,index_value );
+}
+
+llvm::Value * LLVMCodeGen::CodeGen_(ExtractElement * stat) {
+    llvm::Value * from_value = CodeGen(stat->get_from());    
+    llvm::Value * index_value = CodeGen(stat->get_index());
+    return build_ptr_->CreateExtractElement( from_value,index_value );
+}
 llvm::Value * LLVMCodeGen::CodeGen_( DetectConflict * stat) {
      StateMent * index = stat->get_index();
      llvm::Value * index_value = CodeGen( index );
@@ -713,6 +725,9 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
             SET_DISPATCH(ComplexReduce);
             SET_DISPATCH(DetectConflict);
             SET_DISPATCH(Print);
+            SET_DISPATCH(ExtractElement );
+            SET_DISPATCH(InsertElement );
+
         }
         return (*ftype_ptr)(stat);
     }

@@ -41,7 +41,9 @@ std::map<std::string,int> classname_typeid_map = {
 
     {"Div",22},
     {"complex_reduce",23},
-    {"detect_conflict",24}
+    {"detect_conflict",24},
+    {"insert_element",25},
+    {"extract_element",26}
     //static constexpr const char* class_name_ = "broadcast";
 };
 int GetTypeId(std::string class_name) {

@@ -54,6 +54,9 @@ void print_(Minus * stat, std::ostream&os ) ;
 
 void print_(DetectConflict * stat, std::ostream&os ) ;
 void print_(ComplexReduce * stat, std::ostream&os ) ;
+
+void print_( ExtractElement * stat, std::ostream&os ) ;
+void print_( InsertElement * stat, std::ostream&os ) ;
 public:
 
 void print(StateMent * stat,std::ostream&os) ;

@@ -87,6 +87,23 @@ void StateMentPrint::print_( Print * stat, std::ostream & os ) {
     print_(stat->get_var(),os);
     os << "\n";
 }
+void StateMentPrint::print_( ExtractElement * stat, std::ostream&os ) {
+    os << stat->get_class_name() << " ";
+    print(stat->get_from(),os);
+    os << " [ ";
+    print(stat->get_index(),os);
+    os << "]";
+}
+void StateMentPrint::print_( InsertElement * stat, std::ostream&os ) {
+    os << stat->get_class_name() << " ";
+    print( stat->get_to(),os );
+    os << "[";
+    print(stat->get_index(),os);
+    os << "] <- ";
+    print(stat->get_from(),os);
+    os << "\n";
+}
+
 void StateMentPrint::print_(Store * stat, std::ostream&os ) {
     os << stat->get_class_name() << " ";
     print(stat->get_addr(),os);
@@ -186,6 +203,9 @@ void StateMentPrint::print(StateMent * stat,std::ostream&os) {
 
         SET_DISPATCH(ComplexReduce);
         SET_DISPATCH(DetectConflict  );
+
+        SET_DISPATCH(ExtractElement );
+        SET_DISPATCH(InsertElement );
     }
     (*ftype_ptr)(stat,os);
 /*    printf("For\n");

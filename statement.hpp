@@ -572,6 +572,76 @@ class Load : public Expr {
         return mask_;
     }
 };
+class InsertElement :public StateMent {
+    StateMent * to_;
+    StateMent * from_;
+    StateMent * index_;
+    protected:
+    InsertElement( StateMent * to ,StateMent * from, StateMent * index ) : to_(to),from_(from),index_(index){
+        type_ = to->get_type();
+    }
+
+    public:
+
+    static constexpr const char* class_name_ = "insert_element";
+    static StateMent * make(StateMent * to,StateMent * from,StateMent * index) {
+        StateMent * stat_ptr = new InsertElement(to, from,index);
+        return stat_ptr;
+    }
+
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    virtual Type& get_type() {
+        return type_;
+    }
+    StateMent * get_to() const {
+        return from_;
+    } 
+
+    StateMent * get_from() const {
+        return from_;
+    } 
+    StateMent * get_index() const {
+        return index_;
+    }
+};
+
+
+
+class ExtractElement :public StateMent {
+    StateMent * from_;
+    StateMent * index_;
+    protected:
+    ExtractElement( StateMent * from, StateMent * index ) : from_(from),index_(index){
+        type_ = Type( from->get_type().get_data_type(), 1);
+    }
+
+    public:
+
+    static constexpr const char* class_name_ = "extract_element";
+    static StateMent * make(StateMent * from,StateMent * index) {
+
+        StateMent * stat_ptr = new ExtractElement( from,index);
+        return stat_ptr;
+    }
+
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    virtual Type& get_type() {
+        return type_;
+    }
+    StateMent * get_from() const {
+        return from_;
+    } 
+    StateMent * get_index() const {
+        return index_;
+    }
+};
+
+
+
 class Store :public StateMent {
     StateMent * addr_;
     StateMent * data_;
