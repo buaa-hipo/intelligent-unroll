@@ -65,6 +65,8 @@ class LLVMCodeGen {
 
     llvm::Type* t_bool_vec_;
     llvm::Type* t_int_vec_;
+
+    llvm::Type* t_int_dvec_;
     llvm::Type* t_int64_vec_;
     llvm::Type*  t_double_vec_;
 
@@ -80,6 +82,8 @@ class LLVMCodeGen {
     llvm::Type*  t_double_vec4_;
     llvm::Type* t_void_;
     llvm::Type* t_int_vec_p_;
+
+    llvm::Type* t_int_dvec_p_;
     llvm::Type*  t_double_vec_p_;
     llvm::Type* t_int_vec4_p_;
     llvm::Type*  t_double_vec4_p_;

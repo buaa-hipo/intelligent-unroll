@@ -52,7 +52,11 @@
             return t_int8_vec_;
         } else if( type == __int8_v_ptr ) { 
             return t_int8_vec_ptr_;
-        } else {
+        } else if( type == __int_dv_ptr ) {
+            return t_int_dvec_p_;
+        } else if( type == __int_dv ) {
+            return t_int_dvec_;
+        } else{
             LOG(FATAL) << type <<"type does not support ";
             return t_int_;
         }
@@ -103,6 +107,7 @@ LLVMCodeGen::LLVMCodeGen() {
         t_bool_p_ =  t_bool_->getPointerTo();
         t_double_p_ =  t_double_->getPointerTo();
 
+        t_int_dvec_ = llvm::VectorType::get( t_int_, lanes_ * 2);
         t_int_vec_ = llvm::VectorType::get( t_int_, lanes_);
         t_int64_vec_ = llvm::VectorType::get( t_int64_, lanes_ );
         t_bool_vec_ = llvm::VectorType::get( t_bool_, lanes_ );
@@ -117,6 +122,8 @@ LLVMCodeGen::LLVMCodeGen() {
 
 	    t_int8_vec_ptr_ = t_int8_vec_->getPointerTo();
         t_int_vec_p_ = t_int_vec_->getPointerTo();
+
+        t_int_dvec_p_ = t_int_dvec_->getPointerTo();
 	    t_double_vec_p_ = t_double_vec_->getPointerTo();
 
     	t_int_ptr_vec_ = llvm::VectorType::get(t_int_p_,lanes_);

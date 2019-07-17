@@ -123,11 +123,14 @@ extern Type __int8;
  extern Type __double_v;
  extern Type __bool_v ;
  extern Type __int_v ;
+
+ extern Type __int_dv ;
  extern Type __int8_v;
 
 
  extern Type __double_v_ptr;
  extern Type __int_v_ptr;
+ extern Type __int_dv_ptr;
  extern Type __float_ptr_v ;
  extern Type __int8_v_ptr;
 

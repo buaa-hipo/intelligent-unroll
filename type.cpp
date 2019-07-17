@@ -56,10 +56,14 @@ Type __double_ptr_v = __double_pointer_v8;
 Type __double_v = __double_v8;
 Type __bool_v = __bool_v8;
 Type __int_v = __int_v8;
+
+Type __int_dv = __int_v16;
 Type __int8_v = __int8_v8;
 
 Type __double_v_ptr = __double_v8_pointer;
 Type __int_v_ptr = __int_v8_ptr;
+
+Type __int_dv_ptr = __int_v16_ptr;
 Type __int8_v_ptr = __int8_v8_ptr;
 
 Type __float_ptr_v = __float_ptr_v8;

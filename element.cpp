@@ -10,15 +10,33 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
         std::vector<StateMent *> state_vec_tmp;
         StateMent * res_state = LetStat::make( res_simd , dzero_vec_const_ ,false);
         Varience * x_simd[VECTOR];
+        int zero_dv[ VECTOR * 2];
+        for( int i = 0 ; i < VECTOR * 2 ; i++ )
+            zero_dv[i] = 0;
+        
         StateMent * gather_state_ptr[VECTOR];
         StateMent * column_state_ptr[VECTOR];
+        Varience * column_dsimd ;
+        int shuffle_forward[VECTOR] = {0,1,2,3,4,5,6,7};
+        int shuffle_backward[VECTOR] = {8,9,10,11,12,13,14,15};
+        Const * shuffle_forward_const = new Const(shuffle_forward,VECTOR);
+        Const * shuffle_backward_const = new Const(shuffle_backward,VECTOR);
+        Const * zero_dv_const = new Const( zero_dv, VECTOR * 2 );
         for( int i = 0 ; i < VECTOR ; i++ ) {
             
             Const * i_const = new Const( i);
             Varience * column_simd = new Varience( __int_v);
 
             x_simd[i] = new Varience(__double_v);
-            column_state_ptr[i] = LetStat::make( column_simd, Load::make( IncAddr::make(column_v_ptr, i_const),true ) ); 
+            if( i % 2 == 0 ) {
+                column_dsimd = new Varience(__int_dv);
+                StateMent * load_col_state_tmp = LetStat::make( column_dsimd, Load::make( BitCast::make(IncAddr::make(column_v_ptr, i_const),__int_dv_ptr),true ) );
+                StateMent * shuffle_col_state_tmp = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const, shuffle_forward_const ) );
+                column_state_ptr[i] = Block::make( load_col_state_tmp, shuffle_col_state_tmp );
+            } else {
+            
+                column_state_ptr[i] = LetStat::make( column_simd,Shuffle::make( column_dsimd,zero_dv_const, shuffle_backward_const ) );
+            }
             gather_state_ptr[i] = LetStat::make( x_simd[i] , Gather::make( x_ptr_v_var_, column_simd , true_vec_const_ )  );
 //            state_vec_tmp.push_back(column_state);
 
@@ -28,7 +46,7 @@ StateMent * PageRankStateMent::get_block_element( Varience * column_v_ptr, Varie
 
         state_vec_tmp.push_back(res_state);
 
-        #define STEP 2
+        #define STEP 1
         for( int i = 0 ; i < STEP ; i++ ) {
             state_vec_tmp.push_back(column_state_ptr[i]);
             state_vec_tmp.push_back(gather_state_ptr[i]);
