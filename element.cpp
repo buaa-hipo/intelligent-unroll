@@ -234,14 +234,17 @@ StateMent * PageRankStateMent::get_single_reduce_element( Varience * column_ptr_
 
             StateMent * index_state = LetStat::make( index_simd, Load::make( column_ptr_inc_var ,true ) ); 
             
-            StateMent * x_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const_ )  ); 
+            StateMent * exchange_state = LetStat::make( before_x_simd_, after_x_simd_ ,false);
+            StateMent * x_state = LetStat::make( after_x_simd_ , Gather::make( x_ptr_v_var_, index_simd , true_vec_const_ ) ,false ); 
 
             
-            StateMent * fmadd_state = LetStat::make(fast_res, Mul::make( data_simd , x_simd ) ,false);  
+            StateMent * fmadd_state = LetStat::make(fast_res, Mul::make( data_simd , before_x_simd_ ) ,false);  
             
+
             state_vec.push_back( data_state );
 
             state_vec.push_back( index_state );
+            state_vec.push_back( exchange_state );
             state_vec.push_back( x_state );
             state_vec.push_back( fmadd_state );
             StateMent * store_state = Store::make( y_addr ,Add::make(y_data ,Reduce::make( fast_res )));
@@ -351,37 +354,33 @@ StateMent * PageRankStateMent::GenerateReduceState(const Mask2 & mask, const int
     Varience * y_offset_ptr = new Varience(__double_ptr);
    
     Varience * block_for_i = new Varience(__int);
-    Const * const_end = new Const( circle_num );
     Varience * row_index = new Varience(__int);
     StateMent * init_state = GenerateInit(mask_i,circle_mask);
 
-    Varience * before_x_simd = new Varience( __double_v );
-    Varience * after_x_simd = new Varience(__double_v);
 
 
-    StateMent * push_state = For::make(zero_const_ , one_const_, const_end);
+        Const * const_end = new Const( circle_num );
+        StateMent * push_state = For::make(zero_const_ , one_const_, const_end);
 
-    StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
+        StateMent * inc_i = dynamic_cast<For*>(push_state)->get_var();
 
-   
-    StateMent * row_index_state = LetStat::make( row_index , Load::make( IncAddr::make(row_ptr_var_get_, inc_i) )) ;
-
-    StateMent * block_for_i_state = LetStat::make( block_for_i , Mul::make ( inc_i, new Const(inner_circle_num)) );
-
-    StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
-    StateMent * column_ptr_var_inc_state = LetStat::make( column_v_ptr_inc_var, IncAddr::make( column_v_ptr_var_get_, block_for_i) ) ;
-
-    StateMent * data_ptr_var_inc_state = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, block_for_i) ) ;
     StateMent * element_state;
-    if(inner_circle_num == 1) {
-        
-        element_state = get_single_reduce_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_);
-    } else {
+   
+        StateMent * row_index_state = LetStat::make( row_index , Load::make( IncAddr::make(row_ptr_var_get_, inc_i) )) ;
+
+        StateMent * y_addr_state = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
+
+        StateMent * block_for_i_state = LetStat::make( block_for_i , Mul::make ( inc_i, new Const(inner_circle_num)) );
+
+        StateMent * column_ptr_var_inc_state = LetStat::make( column_v_ptr_inc_var, IncAddr::make( column_v_ptr_var_get_, block_for_i) ) ;
+
+        StateMent * data_ptr_var_inc_state = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, block_for_i) ) ;
+
         element_state = get_reduce_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_);
-    }
-    std::vector<StateMent*> inner_for_vec = { block_for_i_state, row_index_state,y_addr_state,column_ptr_var_inc_state,data_ptr_var_inc_state,element_state };
-    dynamic_cast<For*>(push_state)->SetState( CombinStatVec( inner_for_vec ) );
-    return Block::make( init_state,push_state );
+         std::vector<StateMent*> inner_for_vec = { block_for_i_state, row_index_state,y_addr_state,column_ptr_var_inc_state,data_ptr_var_inc_state,element_state };
+        dynamic_cast<For*>(push_state)->SetState( CombinStatVec( inner_for_vec ) );
+
+       return Block::make( init_state,push_state );
 }
 
 StateMent * PageRankStateMent::GenerateMaskState( const Mask2 & mask , const int circle_num , const int mask_i ) {
@@ -407,35 +406,8 @@ StateMent * PageRankStateMent::GenerateMaskState( const Mask2 & mask , const int
     StateMent * init_state = GenerateInit(mask_i,circle_mask);
 
     std::vector<StateMent*> state_vec_tmp = {init_state};
-    if(circle_block_num > 0) {   
-        StateMent * block_for_state = For::make(zero_const_ , one_const_, const_end);
-
-        StateMent * get_block_for_i = dynamic_cast<For*>(block_for_state)->get_var();
-        StateMent * block_for_i_state = LetStat::make( block_for_i , Mul::make (get_block_for_i, new Const(VECTOR)) );
-
-        StateMent * column_ptr_var_inc_state = LetStat::make( column_v_ptr_inc_var, IncAddr::make( column_v_ptr_var_get_, block_for_i) ) ;
-
-        StateMent * data_ptr_var_inc_state = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, block_for_i) ) ;
-
-        StateMent * row_ptr_var_inc_state = LetStat::make( row_v_ptr_inc_var, IncAddr::make( row_v_ptr_var_get_, get_block_for_i) ) ;
-
-        StateMent * block_state =  get_block_element( column_v_ptr_inc_var, data_v_ptr_inc_var , row_v_ptr_inc_var ,  mask ) ;
-        std::vector<StateMent *> inner_for_vec_tmp = { block_for_i_state, column_ptr_var_inc_state, data_ptr_var_inc_state, row_ptr_var_inc_state,block_state  };
-        StateMent * inner_for_tmp = CombinStatVec( inner_for_vec_tmp );
-        dynamic_cast<For*> (block_for_state)->SetState( inner_for_tmp );
-        state_vec_tmp.push_back(block_for_state);
-    }
-//    Const * num_const = new Const(-1);
-
-//           Varience * num_print = new Varience(__int);
-//    state_vec_.push_back(LetStat::make( num_print,num_const));
-            
-//    state_vec_.push_back(Print::make( num_print ));
-
-    //////////////special
-
-    for( int i = 0 ; i < circle_single_num ; i++ ) {
-        const int begin_i = i + circle_block_num * VECTOR;
+    for( int i = 0 ; i < circle_num ; i++ ) {
+        const int begin_i = i; 
         Varience * y_offset_ptr = new Varience( __double_ptr);
         Const * begin_i_const = new Const( begin_i );
         

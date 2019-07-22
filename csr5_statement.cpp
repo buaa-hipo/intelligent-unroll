@@ -34,7 +34,7 @@
   
 
 
-        std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr,__double_ptr_ptr  };
+        std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr,__double_ptr_ptr , __int64_ptr_ptr,_int_ptr_ptr };
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 

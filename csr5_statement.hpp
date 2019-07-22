@@ -53,6 +53,9 @@ class PageRankStateMent : StateMent{
     Varience * data_ptr_var_get_;
     Varience * row_ptr_var_get_; 
     TransAddr trans_addr_;
+    
+    Varience * before_x_simd_;
+    Varience * after_x_simd_;
 
     public:
     PageRankStateMent(  ) ;
