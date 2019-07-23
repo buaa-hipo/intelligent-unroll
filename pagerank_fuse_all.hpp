@@ -61,8 +61,9 @@ class PageRankFuseAll : public UnrollFunctionSpec {
         int64_t data;
         char data_vec[VECTOR];
     } GatherAddr;
-    int analyze_gather_addr(const int * column_block_ptr, int64_t &addr) {
+    int analyze_gather_addr(const int * column_block_ptr, int64_t &addr,int & column_begin) {
         GatherMask gather_addr;
+        std::vector<int> column_begin_vec;
         int column_block[VECTOR];
         for( int v_i = 0 ; v_i < VECTOR; v_i++ ) {
             column_block[v_i] = column_block_ptr[v_i];
@@ -75,6 +76,8 @@ class PageRankFuseAll : public UnrollFunctionSpec {
             }
             if( min == INT_MAX) {
                 break;
+            } else {
+                column_begin_vec.push_back( min );
             }
             num++;
             for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
@@ -86,6 +89,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
         }
         if( num <= LOAD_TO_GATHER_LEVEL ) {
             addr = gather_addr.data;
+            column_begin = column_begin_vec[0];
             return num;
         } else {
             return -1;
@@ -95,8 +99,8 @@ class PageRankFuseAll : public UnrollFunctionSpec {
     void generate_gather_mask(int * m_col_ptr) {
         
         reduce_load1_to_gather_num_ptr_ptr_ = (int**)malloc(sizeof(int*)*mask_num_);
-        reduce_load1_to_gather_addr_ptr_ptr_ = ( int** )malloc(sizeof(int*)*mask_num_);
-
+        reduce_load1_to_gather_addr_ptr_ptr_ = ( int64_t** )malloc(sizeof(int64_t*)*mask_num_);
+        reduce_load1_to_gather_column_begin_ptr_ptr_ = (int**)malloc(sizeof(int*)*mask_num_);
         load1_gather_num_ptr_ = (int*)malloc( sizeof( int ) * mask_num_);
         for( int i = 0 ; i < mask_num_ ; i++ ) {
              const int mask_has_data_num = num_ptr_[i];
@@ -106,6 +110,8 @@ class PageRankFuseAll : public UnrollFunctionSpec {
              std::vector<int64_t> load1_gather_addr_vec;
 
              std::vector<int> load1_gather_index_vec;
+
+             std::vector<int> load1_gather_column_begin_vec;
 
              std::vector<int> load_gather_index_vec;
 //             std::vector<int> load1_gather_addr_num_vec;
@@ -126,10 +132,13 @@ class PageRankFuseAll : public UnrollFunctionSpec {
 
                         int * column_block_ptr = m_col_ptr[ (index + inner_i) * VECTOR  ];
                         int64_t load1_gather_addr;
-                        int num = analyze_gather_addr( column_block_ptr, load1_gather_addr);
+                        int  column_begin;
+                        int num = analyze_gather_addr( column_block_ptr, load1_gather_addr,column_begin);
                         if( num == 1 ) {
                             load1_gather_addr_vec.push_back( load1_gather_addr );
                             load1_gather_index_vec.push_back( inner_i );
+                            load1_gather_column_begin_vec.push_back( column_begin );
+                            
                             load1_gather_addr_num++;
                         } else {
                             load_gather_index_vec.push_back(inner_i);
