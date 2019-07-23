@@ -14,7 +14,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
     int ** reduce_load1_to_gather_num_ptr_ptr_;
     int ** reduce_index_inner_ptr_ptr_; 
     int64_t ** reduce_load1_to_gather_addr_ptr_ptr_; 
-
+    int ** load1_to_gather_column_begin_ptr_ptr_;
     int ** row_ptr_ptr_;
     int ** column_ptr_ptr_;
     double ** data_ptr_ptr_;
@@ -100,7 +100,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
         
         reduce_load1_to_gather_num_ptr_ptr_ = (int**)malloc(sizeof(int*)*mask_num_);
         reduce_load1_to_gather_addr_ptr_ptr_ = ( int64_t** )malloc(sizeof(int64_t*)*mask_num_);
-        reduce_load1_to_gather_column_begin_ptr_ptr_ = (int**)malloc(sizeof(int*)*mask_num_);
+        load1_to_gather_column_begin_ptr_ptr_ = (int**)malloc(sizeof(int*)*mask_num_);
         load1_gather_num_ptr_ = (int*)malloc( sizeof( int ) * mask_num_);
         for( int i = 0 ; i < mask_num_ ; i++ ) {
              const int mask_has_data_num = num_ptr_[i];
@@ -172,11 +172,13 @@ class PageRankFuseAll : public UnrollFunctionSpec {
 
                     int * column_block_ptr = m_col_ptr[ (index) * VECTOR  ];
                     int64_t load1_gather_addr;
-                    int num = analyze_gather_addr( column_block_ptr, load1_gather_addr);
+                    int column_begin;
+                    int num = analyze_gather_addr( column_block_ptr, load1_gather_addr,column_begin);
                     if( num == 1 ) {
                         load1_gather_addr_vec.push_back( load1_gather_addr );
                         load1_gather_addr_num++;
                         load1_gather_index_vec.push_back( index );
+                        load1_gather_column_begin_vec.push_back(column_begin);
                     } else {
                         load_gather_index_vec.push_back( index );
                     } 
@@ -194,6 +196,13 @@ class PageRankFuseAll : public UnrollFunctionSpec {
                  }                 
                 
              }
+             int column_begin_size = load1_gather_column_begin_vec.size();
+             int * load1_gather_column_begin_ptr = (int*)malloc(sizeof(int)*column_begin_size);
+             load1_to_gather_column_begin_ptr_ptr_[i] = load1_gather_column_begin_ptr;
+             for( int i = 0 ; i < column_begin_size ; i++ ) {
+                load1_gather_column_begin_ptr[i] = load1_gather_column_begin_vec[i];
+             }
+             
         }
     }
     void transform(double * m_data_ptr, int * m_col_ptr) {
@@ -228,37 +237,73 @@ class PageRankFuseAll : public UnrollFunctionSpec {
              int * index_ptr = index_ptr_ptr_[i];
              int * row_ptr = row_ptr_ptr_[i];
 
+             int * load1_to_gather_column_begin_ptr = load1_to_gather_column_begin_ptr_ptr_[i]; 
              if( mask == 0x1 ) {
                  int * reduce_index_inner_ptr = reduce_index_inner_ptr_ptr_[i];
                  int * reduce_load1_to_gather_num_ptr = reduce_load1_to_gather_num_ptr_ptr_[i];
-                 
+
+                 int * reduce_load1_to_gather_column_begin_ptr = load1_to_gather_column_begin_ptr;
                  for(int j = 0  ; j < mask_num ; j++ ) {
+
+                    int * column2_ptr = &column_ptr[ j * inner_mask_num * VECTOR ];
                     const int index = index_ptr[j];
                     int reduce_load1_to_gather_num = reduce_load1_to_gather_num_ptr[j];
                     int * reduce_index_inner_ptr_tmp = reduce_index_inner_ptr + j * inner_mask_num * VECTOR;
+                    
+
                     for( int inner_i = 0 ; inner_i < inner_mask_num ; inner_i++ ) {
                         const int inner_i_index = reduce_index_inner_ptr_tmp[inner_i];
 
-                        int * column_block_ptr = &column_ptr[j*VECTOR * inner_mask_num + inner_i * VECTOR ];
                         double * data_block_ptr = &data_ptr[j*VECTOR *inner_mask_num + inner_i * VECTOR ];
                          
                         for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
-                            column_block_ptr[v_i] = m_col_ptr [(index + inner_i_index) * VECTOR + v_i ];
                             data_block_ptr[v_i]   = m_data_ptr[(index + inner_i_index) * VECTOR + v_i ];
                         }
                     }
+                    for(int inner_i = 0; inner_i < reduce_load1_to_gather_num; inner_i++) {
+                        column2_ptr[inner_i] = reduce_load1_to_gather_column_begin_ptr[inner_i]; 
+                    }
+                    int space ;
+                    if(reduce_load1_to_gather_num == 0)
+                        space = 0;
+                    else {
+                        space = ((reduce_load1_to_gather_num - 1) / VECTOR + 1) * VECTOR;
+                    }
+                    for( int inner_i = reduce_load1_to_gather_num ; inner_i < inner_mask_num ; inner_i++ ) {
+                        const int inner_i_index = reduce_index_inner_ptr_tmp[inner_i];
+                        int * column_block_ptr_tmp = &column2_ptr[inner_i * VECTOR]; 
+                        for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
+                            
+                            column_block_ptr[v_i] = m_col_ptr [(index + inner_i_index) * VECTOR + v_i ];
+                        }
+                    }
+
+                    reduce_load1_to_gather_column_begin_ptr += reduce_load1_to_gather_num; 
                  } 
              } else {
+                const int load1_gather_num = load1_gather_num_ptr_[i];
+                for( int j = 0 ; j < load1_gather_num ; j++ ) {
+                    column_ptr[j] = load1_to_gather_column_begin_ptr[ j ];  
+                }
+                for(int j = load1_gather_num  ; j < mask_num ; j++ ) {
+                    const int index = index_ptr[j];
+
+                    int * column_block_ptr = &column_ptr[j*VECTOR  ];
+                         
+                    for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
+                        column_block_ptr[v_i] = m_col_ptr [(index) * VECTOR + v_i ];
+                    }
+                    
+                }
+
                 for(int j = 0  ; j < mask_num ; j++ ) {
                     const int index = index_ptr[j];
 
-                        int * column_block_ptr = &column_ptr[j*VECTOR  ];
-                        double * data_block_ptr = &data_ptr[j*VECTOR ];
+                    double * data_block_ptr = &data_ptr[j*VECTOR ];
                          
-                        for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
-                            column_block_ptr[v_i] = m_col_ptr [(index) * VECTOR + v_i ];
-                            data_block_ptr[v_i]   = m_data_ptr[(index) * VECTOR + v_i ];
-                        }
+                    for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
+                        data_block_ptr[v_i]   = m_data_ptr[(index) * VECTOR + v_i ];
+                    }
                     
                 }
              }
