@@ -48,6 +48,9 @@
         column_ptr_ptr_var_ = (*func_state_ptr_->get_args())[7];
         data_ptr_ptr_var_ = (*func_state_ptr_->get_args())[8];
 
+        load1_gather_addr_ptr_ptr_var__ = (*func_state_ptr_->get_args())[9];
+        load1_gather_num_ptr_ptr_var_ = (*func_state_ptr_->get_args())[10];
+
         y_v_ptr_var_ = new Varience( __double_v_ptr );
         x_v_ptr_var_ = new Varience( __double_v_ptr );
  //       data_v_ptr_var_ = new Varience( __double_v_ptr );

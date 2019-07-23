@@ -40,15 +40,19 @@ class PageRankStateMent : StateMent{
     Varience * y_ptr_v_var_;
     Varience * x_ptr_v_var_;
 
+    Varience * load1_gather_addr_ptr_ptr_var_;
+    Varience * load1_gather_num_ptr_ptr_var_;
+
     FuncStatement * func_state_ptr_;
     StateMent * init_state_;
 
 	std::vector<StateMent*> state_vec_;
     ////middle patameter
+    Varience * load1_gather_addr_ptr_var_get_;
     Varience * column_v_ptr_var_get_;
     Varience * data_v_ptr_var_get_;
     Varience * row_v_ptr_var_get_; 
-   
+     
     Varience * column_ptr_var_get_;
     Varience * data_ptr_var_get_;
     Varience * row_ptr_var_get_; 
