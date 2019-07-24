@@ -52,6 +52,14 @@
             return t_int8_vec_;
         } else if( type == __int8_v_ptr ) { 
             return t_int8_vec_ptr_;
+        } else if( type == __int64 ) { 
+            return t_int64_;
+        } else if( type == __int64_ptr ) {
+            return t_int64_p_;
+        } else if(type == __int64_v) {
+            return t_int64_vec_;
+        } else if( type == __int64_v_ptr ) { 
+            return t_int64_vec_p_;
         } else if( type == __int_dv_ptr ) {
             return t_int_dvec_p_;
         } else if( type == __int_dv ) {
@@ -71,6 +79,7 @@ LLVMCodeGen::LLVMCodeGen() {
 
         permvar_int_512_ = llvm::Intrinsic::getDeclaration( mod_ptr_.get() , llvm::Intrinsic::x86_avx512_permvar_si_512);
 
+        permvar_double_512_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_df_512);
         permvar_float_512_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_sf_512);
 	TheFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>( mod_ptr_.get());
 	TheFPM->add( llvm::createPromoteMemoryToRegisterPass());
@@ -123,6 +132,7 @@ LLVMCodeGen::LLVMCodeGen() {
 	    t_int8_vec_ptr_ = t_int8_vec_->getPointerTo();
         t_int_vec_p_ = t_int_vec_->getPointerTo();
 
+        t_int64_vec_p_ = t_int64_vec_->getPointerTo();
         t_int_dvec_p_ = t_int_dvec_->getPointerTo();
 	    t_double_vec_p_ = t_double_vec_->getPointerTo();
 
@@ -450,12 +460,28 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
 }
 llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
     llvm::Value * v1_value = CodeGen(stat->get_v1());
-
-    llvm::Value * v2_value = CodeGen(stat->get_v2());
-
-    llvm::Value * index_value = CodeGen(stat->get_index());
-        return build_ptr_->CreateShuffleVector( v1_value, v2_value, index_value);
+    StateMent * stat_v2 = stat->get_v2();
+    llvm::Value * v2_value;
+    if( stat_v2 != NULL ) {
+        v2_value = CodeGen(stat_v2);
     }
+    llvm::Value * index_value = CodeGen(stat->get_index());
+    
+    llvm::Value * res ;
+    if(stat_v2 == NULL) {
+        llvm::Value * index8_vec = build_ptr_->CreateBitCast( index_value, t_int8_vec_ ); 
+        llvm::Value * index_vec = build_ptr_->CreateZExtOrBitCast( index8_vec, t_int64_vec_ );
+        
+        std::vector<llvm::Value*> args;
+        args.push_back(v1_value);
+        args.push_back(index_vec);
+        llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_512_ ,args );
+        res = shuffle_data;
+    } else {
+        res = build_ptr_->CreateShuffleVector( v1_value, v2_value, index_value);
+    }
+    return res;
+}
 llvm::Value * LLVMCodeGen::CodeGen_(Reduce * stat) {
         StateMent * v1 = stat->get_v1();
         llvm::Value * v1_value = CodeGen( v1);

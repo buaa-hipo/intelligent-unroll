@@ -406,6 +406,8 @@ class LetStat:public StateMent{
     }
 
 };
+
+
 class IncAddr : public Expr {
     StateMent* addr_;
     StateMent* inc_;
@@ -705,6 +707,11 @@ class Shuffle : public Expr {
     StateMent * v2_;
     StateMent * index_;
     protected:
+    Shuffle( StateMent *v1, StateMent *index ) : v1_(v1),index_(index) {
+        type_ = v1->get_type();
+        v2_ = NULL;
+    }
+
     Shuffle( StateMent *v1,StateMent *v2, StateMent *index ) : v1_(v1),v2_(v2),index_(index) {
         CHECK( v1->get_type() == v2->get_type()) << "the type of v1 and v2 is not equal\n";
         CHECK( index->get_type() == __int_v ) << "the lanes of index is not equal";
@@ -713,6 +720,11 @@ class Shuffle : public Expr {
     public:
 
     static constexpr const char* class_name_ = "shuffle";
+    static StateMent * make( StateMent *v1, StateMent *index ){ 
+        StateMent * stat_ptr = new Shuffle(v1,index);
+        return stat_ptr;
+    }
+
     static StateMent * make( StateMent *v1,StateMent *v2, StateMent *index ){ 
         StateMent * stat_ptr = new Shuffle(v1,v2,index);
         return stat_ptr;

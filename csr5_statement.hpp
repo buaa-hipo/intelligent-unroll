@@ -49,6 +49,8 @@ class PageRankStateMent : StateMent{
 	std::vector<StateMent*> state_vec_;
     ////middle patameter
     Varience * load1_gather_addr_ptr_var_get_;
+
+    Varience * load1_gather_num_ptr_var_get_;
     Varience * column_v_ptr_var_get_;
     Varience * data_v_ptr_var_get_;
     Varience * row_v_ptr_var_get_; 
@@ -70,10 +72,9 @@ class PageRankStateMent : StateMent{
     StateMent * GenerateMaskState( const Mask2 & mask , const int circle_num , const int mask_i ) ;
 //    StateMent * get_element(StateMent * index , Varience * y_addr, const Mask2& mask_para) ;
 
-    StateMent * get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
-    StateMent * get_shuffle_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
+    StateMent * get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para, int load_gather_level , Varience * load_gather_num, Varience * load_gather_addr_ptr) ;
+    StateMent * get_shuffle_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr, int load_gather_level = VECTOR , Varience * load_gather_addr = NULL) ;
 
-    StateMent * get_single_reduce_element( Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para,const TransAddr& trans_addr) ;
     void make(const std::map<Mask2,int>&mask_num_map );
 
     FuncStatement * get_function() ;

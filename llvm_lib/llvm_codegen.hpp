@@ -39,6 +39,7 @@ class LLVMCodeGen {
 
     Function * conflict_512_;
 
+    Function * permvar_double_512_;
     Function * permvar_float_512_;
     Function * permvar_int_512_;
     llvm::Type*  t_int_;
@@ -83,6 +84,7 @@ class LLVMCodeGen {
     llvm::Type* t_void_;
     llvm::Type* t_int_vec_p_;
 
+    llvm::Type* t_int64_vec_p_;
     llvm::Type* t_int_dvec_p_;
     llvm::Type*  t_double_vec_p_;
     llvm::Type* t_int_vec4_p_;

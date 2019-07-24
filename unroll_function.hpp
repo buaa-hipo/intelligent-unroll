@@ -1,5 +1,7 @@
 #ifndef UNROLL_FUNCTION_HPP
 #define UNROLL_FUNCTION_HPP
+#include "llvm_lib/llvm_module.h"
+#include "llvm_lib/llvm_codegen.hpp"
 template<typename FType1, typename FType2, typename FType3> 
 class UnrollFunction;
 

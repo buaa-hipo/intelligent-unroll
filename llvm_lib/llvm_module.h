@@ -3,6 +3,8 @@
  * \file llvm_module.cc
  * \brief LLVM runtime module for TVM
  */
+#ifndef LLVM_LIB__LLVM_MODULE_HPP
+#define LLVM_LIB__LLVM_MODULE_HPP
 #include <mutex>
 #include "llvm_common.h"
 //#include "codegen_llvm.h"
@@ -184,4 +186,4 @@ class LLVMModule  {
   std::unique_ptr<llvm::LLVMContext> ctx_;
 };
 
-
+#endif

@@ -34,7 +34,7 @@
   
 
 
-        std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr,__double_ptr_ptr , __int64_ptr_ptr,_int_ptr_ptr };
+        std::vector<Type> args_type = {__double_ptr,__double_ptr, __double_ptr, __int_ptr,__int_ptr,__int, __int_ptr_ptr, __int_ptr_ptr,__double_ptr_ptr , __int64_ptr_ptr,__int_ptr_ptr };
         Type ret_type = __int; 
         func_state_ptr_ = new FuncStatement( __int, args_type );
 
@@ -48,7 +48,7 @@
         column_ptr_ptr_var_ = (*func_state_ptr_->get_args())[7];
         data_ptr_ptr_var_ = (*func_state_ptr_->get_args())[8];
 
-        load1_gather_addr_ptr_ptr_var__ = (*func_state_ptr_->get_args())[9];
+        load1_gather_addr_ptr_ptr_var_ = (*func_state_ptr_->get_args())[9];
         load1_gather_num_ptr_ptr_var_ = (*func_state_ptr_->get_args())[10];
 
         y_v_ptr_var_ = new Varience( __double_v_ptr );

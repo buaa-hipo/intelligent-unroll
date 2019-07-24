@@ -128,6 +128,7 @@ extern Type __int64;
  extern Type __double_v;
  extern Type __bool_v ;
  extern Type __int_v ;
+ extern Type __int64_v ;
 
  extern Type __int_dv ;
  extern Type __int8_v;
@@ -139,6 +140,7 @@ extern Type __int64;
  extern Type __float_ptr_v ;
  extern Type __int8_v_ptr;
 
+ extern Type __int64_v_ptr;
  extern Type __int_ptr_v;
 
 

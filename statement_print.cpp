@@ -114,8 +114,10 @@ void StateMentPrint::print_(Shuffle * stat, std::ostream&os ) {
     os << stat->get_class_name() << " (";
     print(stat->get_v1(),os);
     os << " , ";
-    print(stat->get_v2(),os);
-    os << " , ";
+    if(stat->get_v2() != NULL) {
+        print(stat->get_v2(),os);
+        os << " , ";
+    }
     print(stat->get_index(),os);
     os << ")\n";
 }

@@ -101,7 +101,6 @@ void Analyze(  std::map<Mask2, std::pair<std::vector<int>,std::vector<int>>> &ma
     int vec_num;
     int mask_num_tmp = 0;
     AnalyzeGetMask2( row_begin_ptr, index_begin_ptr,mask_ptr, vec_num, row_ptr, column_ptr, row_num, column_num );
-    generate_gather_mask( index_begin_ptr, vec_num, column_ptr );
     Show( mask_ptr, vec_num );
     for( int i = 0 ; i < vec_num; i++ ) {
         auto it = mask_map.find( mask_ptr[i] );
