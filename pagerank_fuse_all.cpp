@@ -69,7 +69,7 @@
                     int * reduce_index_mask_ptr_j = reduce_index_mask_ptr + j * inner_mask_num;
                     for( int inner_i = 0 ; inner_i < inner_mask_num ; inner_i++ ) {
 
-                        int * column_block_ptr = m_col_ptr[ (index + inner_i) * VECTOR  ];
+                        int * column_block_ptr = &m_col_ptr[ (index + inner_i) * VECTOR  ];
                         int64_t load1_gather_addr;
                         int  column_begin;
                         int num = analyze_gather_addr( column_block_ptr, load1_gather_addr,column_begin);
@@ -80,34 +80,32 @@
                         } else {
                             reduce_index_mask_ptr_j[inner_i] = VECTOR;
                         }
-                        reduce_load1_to_gather_num_ptr[j] = load1_gather_addr_num;
                     }
+
+                    load1_to_gather_num_ptr[j] = load1_gather_addr_vec.size();
                  }
 
 
              } else {
                  for(int j = 0  ; j < mask_has_data_num ; j++ ) {
                     const int index = index_ptr[j];
-                    int load1_gather_addr_num = 0;
 
-                    int * column_block_ptr = m_col_ptr[ (index) * VECTOR  ];
+                    int * column_block_ptr = &m_col_ptr[ (index) * VECTOR  ];
                     int64_t load1_gather_addr;
                     int column_begin;
                     int num = analyze_gather_addr( column_block_ptr, load1_gather_addr,column_begin);
                     if( num == 1 ) {
                         load1_gather_addr_vec.push_back( load1_gather_addr );
-                        load1_gather_addr_num++;
                         load1_gather_index_vec.push_back( index );
                         load1_gather_column_begin_vec.push_back(column_begin);
                     } else {
                         load_gather_index_vec.push_back( index );
                     } 
-                    load1_gather_addr_num_vec.push_back(load1_gather_addr_num);
                  }
                  int * load1_to_gather_num_ptr = (int*)malloc(sizeof(int));
-                 reduce_load1_to_gather_num_ptr_ptr_[i] = load1_to_gather_num_ptr;
+                 load1_to_gather_num_ptr_ptr_[i] = load1_to_gather_num_ptr;
 
-                 load1_gather_num_ptr_[ 0 ] = load1_gather_addr_num;
+                 load1_to_gather_num_ptr[ 0 ] = load1_gather_index_vec.size();
                  int load_gather_index = 0;
                  for( auto it : load1_gather_index_vec ) {
                     index_ptr[load_gather_index] = it;
@@ -120,8 +118,8 @@
                 
              }
             /////////////////////
-             int64_t * load1_to_gather_addr_ptr = (int64_t)malloc(sizeof(int64_t)* load_gather_addr_vec.size());
-             reduce_load1_to_gather_addr_ptr_ptr_[i] = reduce_load1_to_gather_addr_ptr;
+             int64_t * load1_to_gather_addr_ptr = (int64_t*)malloc(sizeof(int64_t)* load1_gather_addr_vec.size());
+             load1_to_gather_addr_ptr_ptr_[i] = load1_to_gather_addr_ptr;
              int it_i = 0;
              for( auto it : load1_gather_addr_vec ) {
                 load1_to_gather_addr_ptr[it_i] = it;
@@ -211,9 +209,9 @@ void PageRankFuseAll::transform(double * m_data_ptr, int * m_col_ptr) {
 
              int * load1_to_gather_column_begin_ptr = load1_to_gather_column_begin_ptr_ptr_[i]; 
              if( mask == 0x1 ) {
-                 int * reduce_index_inner_ptr = reduce_index_inner_ptr_ptr_[i];
-                 int * reduce_load1_to_gather_num_ptr = reduce_load1_to_gather_num_ptr_ptr_[i];
+                 int * reduce_load1_to_gather_num_ptr = load1_to_gather_num_ptr_ptr_[i];
 
+                 int * reduce_index_mask_ptr = reduce_index_mask_ptr_ptr_[i] ;
                  int * reduce_load1_to_gather_column_begin_ptr = load1_to_gather_column_begin_ptr;
                  for(int j = 0  ; j < mask_num ; j++ ) {
 
@@ -251,7 +249,9 @@ void PageRankFuseAll::transform(double * m_data_ptr, int * m_col_ptr) {
                     reduce_load1_to_gather_column_begin_ptr += reduce_load1_to_gather_num; 
                  } 
              } else {
-                const int load1_gather_num = load1_gather_num_ptr_[i];
+
+                const int * load1_to_gather_num_ptr = load1_to_gather_num_ptr_ptr_[i];
+                const int load1_gather_num = load1_to_gather_num_ptr[0];
                 for( int j = 0 ; j < load1_gather_num ; j++ ) {
                     column_ptr[j] = load1_to_gather_column_begin_ptr[ j ];  
                 }
@@ -283,13 +283,13 @@ void PageRankFuseAll::transform(double * m_data_ptr, int * m_col_ptr) {
         PageRankStateMent * page_rank_statement_ptr = new PageRankStateMent( );
         page_rank_statement_ptr->make( mask_num_map_);
         func_ptr_ = page_rank_statement_ptr->get_function();
-//        std::cout<<func_ptr_->get_state();
+        std::cout<<func_ptr_->get_state();
     }
     void PageRankFuseAll::analyze(int * row_ptr, int * column_ptr, const int row_num ,const int column_num ,double*data_ptr) {
         Analyze( mask_map_,mask_num_map_,mask_num_, row_ptr, column_ptr,row_num, column_num);
         generate_index_and_row_ptr_ptr();
 
-        generate_gather_mask();
+        generate_gather_mask( column_ptr );
         LOG(INFO) << "Before Trans";
         transform( data_ptr, column_ptr);
 

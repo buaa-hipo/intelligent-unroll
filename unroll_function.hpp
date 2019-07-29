@@ -22,7 +22,7 @@ class UnrollFunction<R1(AnalyzeArgs...),R2( Args...), void(AddArgs...)> {
         generate_func();
         LLVMCodeGen codegen;
         codegen.AddFunction( func_ptr_ );
-//        codegen.PrintModule();
+        codegen.PrintModule();
         //LLVMLOG(INFO) << *codegen.get_mod();
         llvm_module_ptr_ = new LLVMModule< FunctionType >( codegen.get_mod(),codegen.get_ctx() );
         llvm_module_ptr_->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");

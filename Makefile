@@ -52,7 +52,7 @@ sum.ll: sum.bc
 	llvm-dis $<
 
 pagerank_fuse_all.o:pagerank_fuse_all.cpp
-	$(CC) -std=c++11 -O3  $< -c -o $@
+	$(CC) -std=c++11 -O3 -I./bit2addr  $< -c -o $@
 analyze.o:analyze.cpp
 	$(CC) -std=c++11 -O3  $< -c -o $@
 clean:

@@ -58,6 +58,7 @@ class LLVMCodeGen {
     llvm::Type*  t_int_p_p_ ;
     llvm::Type*  t_int64_p_;
 
+    llvm::Type*  t_int64_p_p_;
     llvm::Type*  t_int8_ptr_ ;
     llvm::Type*  t_bool_p_;
     llvm::Type*  t_double_p_;

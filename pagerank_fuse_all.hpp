@@ -1,8 +1,10 @@
 #ifndef PAGERANK_FUNCTION_HPP
 #define PAGERANK_FUNCTION_HPP
+#include "util.h"
 #include "analyze.h"
 #include "statement.hpp"
 #include "unroll_function.hpp"
+#include "csr5_statement.hpp"
 #include "llvm_lib/llvm_module.h"
 using FType1 = void( int*,int*,const int  , const int,double* );
 using FType2 = int( double*,double*,double*,int*,int*,int );

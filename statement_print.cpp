@@ -43,7 +43,6 @@ void StateMentPrint::print_( IncAddr * stat ,std::ostream&os) {
     print(stat->get_addr(),os) ;
     os << " + ";
     print(stat->get_inc(),os);
-    os << "\n";
 }
 void StateMentPrint::print_(Nop * stat,std::ostream&os ) {
     os << "nop\n";
@@ -154,7 +153,6 @@ void StateMentPrint::print_(BitCast * stat, std::ostream&os ) {
     os << stat->get_type_str();
     os << ")";
     print( stat->get_v1(),os);
-    os << "\n";
 }
 #define PRINT_BINARY( CLASSNAME ,OP) \
     void StateMentPrint::print_(CLASSNAME * stat,std::ostream& os ) {\

@@ -114,6 +114,7 @@ extern Type __int64;
  extern Type __double_ptr;
  extern Type __int_ptr ;
  extern Type __int64_ptr;
+
  extern Type __double_ptr_ptr ;
  extern Type __int_ptr_ptr ;
  extern Type __int64_ptr_ptr;

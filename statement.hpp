@@ -52,6 +52,11 @@ class Varience :public StateMent{
     Varience() {
         LOG(FATAL) << "please use other constructe functions";
     }
+    Varience(const Type &type, std::string & name ) {
+        type_ = type;
+        name_ = get_unique_name() + "_" + name;
+    }
+
     Varience(const Type &type ) {
         type_ = type;
         name_ = get_unique_name();

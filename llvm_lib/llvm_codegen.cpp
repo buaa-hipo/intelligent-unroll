@@ -56,6 +56,8 @@
             return t_int64_;
         } else if( type == __int64_ptr ) {
             return t_int64_p_;
+        } else if( type == __int64_ptr_ptr ) {
+            return t_int64_p_p_;
         } else if(type == __int64_v) {
             return t_int64_vec_;
         } else if( type == __int64_v_ptr ) { 
@@ -116,6 +118,7 @@ LLVMCodeGen::LLVMCodeGen() {
         t_bool_p_ =  t_bool_->getPointerTo();
         t_double_p_ =  t_double_->getPointerTo();
 
+        t_int64_p_p_ = t_int64_p_->getPointerTo();
         t_int_dvec_ = llvm::VectorType::get( t_int_, lanes_ * 2);
         t_int_vec_ = llvm::VectorType::get( t_int_, lanes_);
         t_int64_vec_ = llvm::VectorType::get( t_int64_, lanes_ );
@@ -475,7 +478,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
         std::vector<llvm::Value*> args;
         args.push_back(v1_value);
         args.push_back(index_vec);
-        llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_512_ ,args );
+        llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_double_512_ ,args );
         res = shuffle_data;
     } else {
         res = build_ptr_->CreateShuffleVector( v1_value, v2_value, index_value);

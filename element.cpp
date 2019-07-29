@@ -127,7 +127,7 @@ StateMent * PageRankStateMent::get_shuffle_element(Varience * column_ptr_inc_var
                  
         return CombinStatVec(state_vec);
 }
-StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para, int load_gather_level, Varience * load_gather_num , Varience * load_gather_addr_ptr) {
+StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var, Varience * data_ptr_inc_var , Varience * y_addr ,const Mask2 &mask_para , Varience * load_gather_num , Varience * load_gather_addr_ptr) {
         const int circle_num = mask_para.num_;
         const int circle_mask = mask_para.mask_;
                
@@ -145,8 +145,8 @@ StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var,
             Varience * add_simd = new Varience( __double_v );
             Varience * data_simd = new Varience( __double_v );
             Varience * index_simd = new Varience( __int_v );
-
-            Varience * index = new Varience( __int );
+            std::string index_name = std::string("column_index");
+            Varience * index = new Varience( __int , index_name );
             Varience * y_v_addr = new Varience(__double_v_ptr);
 
 
@@ -168,7 +168,8 @@ StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var,
                     StateMent * load1_gather_for_i = dynamic_cast<For*>(load1_gather_for_state)->get_var();
                     StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make( data_ptr_inc_var , load1_gather_for_i ),true ) ); 
 
-                    StateMent * index_state = LetStat::make( index, Load::make( IncAddr::make( BitCast::make(column_ptr_inc_var,__int_ptr), load1_gather_for_i ) ) ); 
+                    StateMent * index_state = LetStat::make( index, Load::make( IncAddr::make( BitCast::make(column_ptr_inc_var,__int_ptr), load1_gather_for_i ) ) );
+                    Varience * load1_gather_addr = new Varience(__int64  );
                     StateMent * load1_gather_addr_state = LetStat::make( load1_gather_addr , Load::make( IncAddr::make( load_gather_addr_ptr , load1_gather_for_i)  ) );
             
             
@@ -185,16 +186,16 @@ StateMent * PageRankStateMent::get_reduce_element(Varience * column_ptr_inc_var,
                     StateMent * for_state = For::make( load_gather_num , one_const_, const_end);
                      
                     StateMent * inc_i = dynamic_cast<For*>(for_state)->get_var();
-                    StateMent * data_state = LetStat::make( data_simd, Load::make( IncAddr::make( data_ptr_inc_var , inc_i ),true ) ); 
+                    StateMent * data_state_gather = LetStat::make( data_simd, Load::make( IncAddr::make( data_ptr_inc_var , inc_i ),true ) ); 
 
-                    StateMent * index_state = LetStat::make( index_simd, Load::make( IncAddr::make( column_ptr_inc_var, inc_i ),true ) ); 
+                    StateMent * index_state_gather = LetStat::make( index_simd, Load::make( IncAddr::make( column_ptr_inc_var, inc_i ),true ) ); 
             
-                    StateMent * x_state = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const_ )  ); 
+                    StateMent * x_state_gather = LetStat::make( x_simd , Gather::make( x_ptr_v_var_, index_simd , true_vec_const_ )  ); 
 
             
-                    StateMent * fmadd_state = LetStat::make(fast_res,  Add::make(fast_res, Mul::make( data_simd , x_simd ) ),false);  
+                    StateMent * fmadd_state_gather = LetStat::make(fast_res,  Add::make(fast_res, Mul::make( data_simd , x_simd ) ),false);  
                 
-                    std::vector<StateMent*> for_state_vec = {  data_state, index_state, x_state, fmadd_state };
+                    std::vector<StateMent*> for_state_vec = {  data_state_gather, index_state_gather, x_state_gather, fmadd_state_gather };
                     StateMent * inner_for_state = CombinStatVec( for_state_vec );
                 
                     dynamic_cast<For*>(for_state)->SetState(inner_for_state);
@@ -218,9 +219,9 @@ StateMent * PageRankStateMent::GenerateInit(int mask_i,int circle_mask) {
     column_v_ptr_var_get_ = new Varience(__int_v_ptr);
     row_v_ptr_var_get_ = new Varience( __int_v_ptr );
     data_v_ptr_var_get_ = new Varience( __double_v_ptr );
-    load1_gather_addr_ptr_var_get_ = new Varience( __int_ptr );
-
-    load1_gather_num_ptr_var_get_ = new Varience( __int_ptr );
+    load1_gather_addr_ptr_var_get_ = new Varience( __int64_ptr );
+    std::string load1_gather_num_ptr_var_get_name = std::string("load1_gather_num_ptr");
+    load1_gather_num_ptr_var_get_ = new Varience( __int_ptr, load1_gather_num_ptr_var_get_name );
 
     StateMent * column_ptr_state = LetStat::make( column_ptr_var_get_ , Load::make(IncAddr::make( column_ptr_ptr_var_ , mask_i_const)) );
 
@@ -263,10 +264,11 @@ StateMent * PageRankStateMent::GenerateReduceState(const Mask2 & mask, const int
     Varience * load1_gather_num_ptr_var_get = new Varience( __int_ptr );
 
     Varience * load1_gather_num_var = new Varience( __int);
-    Varience * load1_gather_addr_ptr_var = new Varience( __int_ptr);
+    std::string load1_gather_addr_ptr_var_name = std::string("load1_gather_addr_ptr_var");
+    Varience * load1_gather_addr_ptr_var = new Varience( __int_ptr,load1_gather_addr_ptr_var_name);
 
         StateMent * load1_gather_addr_ptr_state = LetStat::make(load1_gather_addr_ptr_var , load1_gather_addr_ptr_var_get_, false ) ;
-
+        init_state = Block::make( init_state, load1_gather_addr_ptr_state ); 
         Const * const_end = new Const( circle_num );
         StateMent * push_state = For::make(zero_const_ , one_const_, const_end);
 
@@ -322,8 +324,12 @@ StateMent * PageRankStateMent::GenerateMaskState( const Mask2 & mask , const int
     
     Varience * load1_gather_num_var = new Varience( __int );
     StateMent * load1_gather_num_state = LetStat::make( load1_gather_num_var , Load::make( load1_gather_num_ptr_var_get_ ));
-    StateMent * load1_gather_num_for_state = For::make(zero_const_ , one_const_, load1_gather_num_var);
     
+    state_vec_tmp.push_back(load1_gather_num_state);
+
+    std::vector<StateMent *> load1_gather_num_for_state_inner_vec;
+    StateMent * load1_gather_num_for_state = For::make(zero_const_ , one_const_, load1_gather_num_var);
+    state_vec_tmp.push_back(load1_gather_num_for_state); 
     StateMent * load1_gather_num_i = dynamic_cast<For*>(load1_gather_num_for_state)->get_var();
 
     Varience * y_offset_ptr = new Varience( __double_ptr);    
@@ -341,45 +347,50 @@ StateMent * PageRankStateMent::GenerateMaskState( const Mask2 & mask , const int
         
     StateMent * y_addr_state_spec = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
     
-    Varience * load1_gather_addr = new Varience( __int8_v );
+    Varience * load1_gather_addr = new Varience( __int64 );
 
-    Varience * load1_gather_addr_zext = new Varience( __int_v );
     StateMent * load1_gather_addr_state = LetStat::make( load1_gather_addr, Load::make( IncAddr::make(load1_gather_addr_ptr_var_get_,load1_gather_num_i)));
 
-        StateMent * element_state_spec = get_shuffle_element( column_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_, load_gather_level, load1_gather_addr_zext ) ;
+        StateMent * element_state_spec = get_shuffle_element( column_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_, load_gather_level, load1_gather_addr) ;
 
-        state_vec_tmp.push_back( column_ptr_var_inc_state_spec );
-        state_vec_tmp.push_back( data_ptr_var_inc_state_spec );
-        state_vec_tmp.push_back( row_index_state_spec );
-        state_vec_tmp.push_back( y_addr_state_spec );
-        state_vec_tmp.push_back( element_state_spec );
+        load1_gather_num_for_state_inner_vec.push_back( column_ptr_var_inc_state_spec );
+        load1_gather_num_for_state_inner_vec.push_back( data_ptr_var_inc_state_spec );
+        load1_gather_num_for_state_inner_vec.push_back( row_index_state_spec );
+        load1_gather_num_for_state_inner_vec.push_back( y_addr_state_spec );
+
+        load1_gather_num_for_state_inner_vec.push_back( load1_gather_addr_state );
+        load1_gather_num_for_state_inner_vec.push_back( element_state_spec );
+        dynamic_cast<For*>(load1_gather_num_for_state)->SetState(CombinStatVec(load1_gather_num_for_state_inner_vec));
 /////////////////////////////////////////////////////////////////////
         y_offset_ptr = new Varience( __double_ptr);    
         column_ptr_inc_var = new Varience( __int_v_ptr ); 
         data_v_ptr_inc_var = new Varience( __double_v_ptr );
-        Varience * row_index = new Varience( __int);
-        
+        Varience * row_index_gather = new Varience( __int);
+                
         StateMent * gather_for_state = For::make(zero_const_ , one_const_, new Const(circle_num));
-    
+        state_vec_tmp.push_back(gather_for_state);
+
+        std::vector<StateMent*> gather_for_state_vec; 
         StateMent * gather_for_i = dynamic_cast<For*>( gather_for_state )->get_var();
 
-
-        StateMent * begin_i_const_state = LetStat::make( begin_i_const, Add::make( gather_for_i, load1_gather_num_const ) );
-        StateMent * column_ptr_var_inc_state_spec = LetStat::make( column_v_ptr_inc_var, IncAddr::make( column_v_ptr_var_get_, begin_i_const) ) ;
-        StateMent * data_ptr_var_inc_state_spec = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, begin_i_const) ) ;
+        Varience * begin_i_const = new Varience(__int);
+        StateMent * begin_i_const_state = LetStat::make( begin_i_const, Add::make( gather_for_i, load1_gather_num_var ) );
+        StateMent * column_ptr_var_inc_state_gather = LetStat::make( column_v_ptr_inc_var, IncAddr::make( column_v_ptr_var_get_, begin_i_const) ) ;
+        StateMent * data_ptr_var_inc_state_gather = LetStat::make( data_v_ptr_inc_var, IncAddr::make( data_v_ptr_var_get_, begin_i_const) ) ;
         
-        StateMent * row_index_state_spec = LetStat::make( row_index , Load::make( IncAddr::make(row_ptr_var_get_ ,begin_i_const) )) ;
+        StateMent * row_index_state_gather = LetStat::make( row_index_gather , Load::make( IncAddr::make(row_ptr_var_get_ ,begin_i_const) )) ;
         
-        StateMent * y_addr_state_spec = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
+        StateMent * y_addr_state_gather = LetStat::make( y_offset_ptr , IncAddr::make( y_ptr_var_, row_index ) );
 
-        StateMent * element_state_spec = get_shuffle_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_) ;
+        StateMent * element_state_gather = get_shuffle_element( column_v_ptr_inc_var , data_v_ptr_inc_var , y_offset_ptr , mask , trans_addr_) ;
 
-        state_vec_tmp.push_back( column_ptr_var_inc_state_spec );
-        state_vec_tmp.push_back( data_ptr_var_inc_state_spec );
-        state_vec_tmp.push_back( row_index_state_spec );
-        state_vec_tmp.push_back( y_addr_state_spec );
-        state_vec_tmp.push_back( element_state_spec );
-
+        gather_for_state_vec.push_back( begin_i_const_state );
+        gather_for_state_vec.push_back( column_ptr_var_inc_state_gather );
+        gather_for_state_vec.push_back( data_ptr_var_inc_state_gather );
+        gather_for_state_vec.push_back( row_index_state_gather );
+        gather_for_state_vec.push_back( y_addr_state_gather );
+        gather_for_state_vec.push_back( element_state_gather );
+        dynamic_cast<For*>(gather_for_state)->SetState(CombinStatVec(gather_for_state_vec));
 
     return CombinStatVec(state_vec_tmp);    
 }
