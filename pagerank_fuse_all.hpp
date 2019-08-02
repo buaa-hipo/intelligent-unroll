@@ -21,6 +21,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
     int64_t ** load1_to_gather_addr_ptr_ptr_; 
     int ** load1_to_gather_column_begin_ptr_ptr_;
     int ** row_ptr_ptr_;
+    int * m_row_ptr_;
     int ** column_ptr_ptr_;
     double ** data_ptr_ptr_;
     int * num_ptr_;
@@ -33,7 +34,7 @@ class PageRankFuseAll : public UnrollFunctionSpec {
     int analyze_gather_addr(const int * column_block_ptr, int64_t &addr,int & column_begin) ;
     void transform(double * m_data_ptr, int * m_col_ptr) ;
 
-    void generate_gather_mask(int * m_col_ptr) ;
+    void generate_gather_mask(const int * m_col_ptr) ;
     public:
 
     

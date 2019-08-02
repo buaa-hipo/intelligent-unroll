@@ -72,6 +72,7 @@
 #include "llvm_lib/llvm_codegen.hpp"
 #include "analyze.h"
 #include "pagerank_fuse_all.hpp"
+#include "util.h"
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
@@ -92,7 +93,8 @@ void init_vec(DATATYPE * dence_vec_ptr, const int data_num , const DATATYPE data
         }
     } else {
         for( int i = 0 ; i < data_num ; i++ ) {
-            dence_vec_ptr[i] = data;
+            dence_vec_ptr[i] = data ;
+
         }
     }
 }
@@ -149,8 +151,15 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
     
     DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
-//    init_vec(x_array,column_num,1);
+#ifdef DEBUG
+    init_vec(x_array,column_num,1);
+
+    //init_vec( x_array, column_num , 1 ,true);
+#else
     init_vec( x_array, column_num , 1 ,true);
+
+    //init_vec(x_array,column_num,1);
+#endif
     init_vec( y_array, row_num , 0 );
     init_vec( y_array_bak, row_num , 0 );
 
@@ -168,17 +177,22 @@ int main( int argc , char const * argv[] ) {
 
     Timer::printTimer("aot");
     page_rank_fuse_all( y_array, x_array,data_ptr,column_ptr,row_ptr,row_num );
-
+#ifndef DEBUG
      for( int i = 0 ; i < 50 ; i++ )
         page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
 #define TIMES 100
+#else
+#define TIMES 0
+
+#endif
     Timer::startTimer("jit");
      for( int i = 0 ; i < TIMES ; i++ )
         page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
+
     if(!check_equal( y_array_bak, y_array, row_num )) {
         return 1;
     }

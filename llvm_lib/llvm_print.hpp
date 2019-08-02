@@ -22,7 +22,7 @@ class LLVMPrint {
         llvm::Function * func_print = reinterpret_cast<llvm::Function*>( func_const );
         func_print_ = func_print;
     }
-    void PrintInt( llvm::Value * value ) {
+    void __PrintElem( llvm::Value * value, const std::string &form ) {
     
         std::vector<llvm::Value *> values;
         llvm::Value *formatStr = builder_ptr_->CreateGlobalStringPtr("Print %d\n");
@@ -31,6 +31,15 @@ class LLVMPrint {
         builder_ptr_->CreateCall( func_print_,values );
 
     }
+    void PrintInt( llvm::Value * value ) {
+        __PrintElem( value , "Print %d\n" );
+    }
+
+    void PrintInt64( llvm::Value * value ) {
+    
+        __PrintElem( value , "Print %ld\n");
+    }
+
     void PrintPtr( llvm::Value * value_ptr, const int lanes ) {
         std::vector<llvm::Value*> values;
         std::string str_format = std::string(" data ");
@@ -63,6 +72,8 @@ class LLVMPrint {
 #define LLVMPrintPoint(mod,ctx,build)  LLVMPrint( mod,ctx,build).PrintPoint()
 
 #define LLVMPrintInt(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintInt(data)
+#define LLVMPrintInt64(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintInt64(data)
+
 
 #define LLVMPrintPtr(mod,ctx,build,ptr,lanes)  LLVMPrint( mod,ctx,build).PrintPtr(ptr,lanes)
 

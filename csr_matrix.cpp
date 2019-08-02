@@ -205,21 +205,25 @@ csrSparseMatrixPtr matrix_read_csr( const char * filename ) {
 
 
     // set csrValA to 1, easy for checking floating-point results
-    for (int i = 0; i < nnzA; i++)
-    {
+    for (int i = 0; i < nnzA; i++) {
+#ifndef DEBUG
         csrValA[i] = rand() % 10;
-    //      csrValA[i] = 1;
+
+#else
+        csrValA[i] = 1;
+#endif
     }
 
     printf( " ( m = %d , n = %d  ) nnz = %d \n" ,m , n , nnzA );
 
     //double gb = getB<int, VALUE_TYPE>(m, nnzA);
     //double gflop = getFLOP<int>(nnzA);
-//    for( int i = 0 ; i < m ; i++ ) {
-//      printf("%d %d %d\n",i, csrRowPtrA[i],csrRowPtrA[i+1] - csrRowPtrA[i]);
-//    }
+/*    
+    for( int i = 0 ; i < 10 ; i++ ) {
+      printf("%d %d %d\n",i, csrRowPtrA[i],csrRowPtrA[i+1] - csrRowPtrA[i]);
+    }
 
-//    exit(1);
+    exit(1);*/
     res->row_ptr = csrRowPtrA;
     res->column_ptr = csrColIdxA;
     res->data_ptr = csrValA;

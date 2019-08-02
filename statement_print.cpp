@@ -11,6 +11,7 @@ void StateMentPrint::print_(Block * stat,std::ostream&os) {
     }
 }
 void StateMentPrint::print_(For * stat,std::ostream&os) {
+    PrintSpace(os);
     os << "for ( ";
     print(stat->get_var(),os);
     os << " = ";
@@ -20,7 +21,11 @@ void StateMentPrint::print_(For * stat,std::ostream&os) {
     os << " , ";
     print(stat->get_space(),os);
     os << " ) { \n";
+    IncSpace();
+
     print(stat->get_stat(),os);
+    DecSpace();
+    PrintSpace(os);
     os << "}\n";
 
 }
@@ -31,6 +36,7 @@ void StateMentPrint::print_(Const * stat, std::ostream&os) {
     os << stat->get_type_str() << "(" << stat->get_data_str() <<")";
 }
 void StateMentPrint::print_(LetStat * stat,std::ostream&os) {
+    PrintSpace(os);
     if(stat->get_is_const()) {
         os << "const ";
     }
@@ -48,6 +54,7 @@ void StateMentPrint::print_(Nop * stat,std::ostream&os ) {
     os << "nop\n";
 }
 void StateMentPrint::print_(Scatter * stat, std::ostream&os) {
+    PrintSpace(os);
     os << "scatter ";
     print(stat->get_addr(),os);
     os << "(";
@@ -83,7 +90,7 @@ void StateMentPrint::print_(Load * stat, std::ostream&os ) {
 }
 void StateMentPrint::print_( Print * stat, std::ostream & os ) {
     os << "print ";
-    print_(stat->get_var(),os);
+    print(stat->get_var(),os);
     os << "\n";
 }
 void StateMentPrint::print_( ExtractElement * stat, std::ostream&os ) {
@@ -104,10 +111,12 @@ void StateMentPrint::print_( InsertElement * stat, std::ostream&os ) {
 }
 
 void StateMentPrint::print_(Store * stat, std::ostream&os ) {
+    PrintSpace(os);
     os << stat->get_class_name() << " ";
     print(stat->get_addr(),os);
     os << " <- ";
     print(stat->get_data(),os);
+    os << "\n";
 }
 void StateMentPrint::print_(Shuffle * stat, std::ostream&os ) {
     os << stat->get_class_name() << " (";

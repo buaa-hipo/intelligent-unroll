@@ -5,6 +5,19 @@
 #include "type.hpp"
 #include <iostream>
 class StateMentPrint{
+int space_num = 0 ;
+const int space_inc_num = 4;
+void IncSpace() {
+    space_num += space_inc_num;
+}
+void DecSpace() {
+    space_num -= space_inc_num;
+}
+void PrintSpace(std::ostream &os) {
+    for( int  i = 0 ; i < space_num ; i++) {
+        os << " ";
+    }
+}
 
 void print_(StateMent * stat,std::ostream&os) ;
 

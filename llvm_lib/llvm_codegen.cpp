@@ -4,7 +4,7 @@
         const Type & state_type = v->get_type();
         DataType data_type = state_type.get_data_type() ;
         int type_size[] = {sizeof(float),sizeof(double),sizeof(int),
-                           sizeof(bool),sizeof(int8_t),sizeof(void*)};
+                           sizeof(bool),sizeof(int8_t),sizeof(void*),sizeof(int64_t)};
         return type_size[data_type];
     }
     llvm::Type * LLVMCodeGen::Type2LLVMType(const Type & type) {
@@ -180,12 +180,16 @@ llvm::Value * LLVMCodeGen::CodeGen_(Block * stat  ) {
         return Null_;
     }
 llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
-        Varience * var = stat->get_var();
-        Type & type = var->get_type();
-        llvm::Value * value = CodeGen_(var);
+//        Varience * var = stat->get_var();
+
+        Type & type = stat->get_type();
+        llvm::Value * value = CodeGen(stat->get_var());
         if( type == __int ) {
         
             LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(),build_ptr_.get(), value );
+        } else if (type == __int64) {
+            
+            LLVMPrintInt64( mod_ptr_.get(), ctx_ptr_.get(),build_ptr_.get(), value );
         } else if( type == __int_ptr ) {
             LLVMPrintPtr( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value, 1 );
         } else {

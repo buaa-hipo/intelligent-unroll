@@ -23,7 +23,6 @@ class StateMent {
     StateMent( )  {
     }
     virtual Type& get_type() {
-        LOG(FATAL) << "does not have type";
         return type_;
     } 
 };
@@ -208,17 +207,19 @@ class Block : public StateMent{
 };
 class Print : public StateMent{
     
-    Varience * var_;
+    StateMent * var_;
     protected:
-    Print( Varience * var ) : var_(var) {
+    Print( StateMent * var ) : var_(var) {
+        type_ = var->get_type();
     }
     public:
     static constexpr const char* class_name_ = "print";
-    static StateMent * make( Varience * var )  {
+
+    static StateMent * make( StateMent * var )  {
         StateMent * stat_ptr = new Print(var);
         return stat_ptr;
     }
-    Varience * get_var() {
+    StateMent * get_var() {
         return var_;
     }
     virtual std::string get_class_name() {
@@ -543,7 +544,7 @@ class Load : public Expr {
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
     }
-    Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask) {
+    Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask),is_alined_(is_alined) {
             has_mask_ = true;
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
