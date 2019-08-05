@@ -170,6 +170,10 @@ class Block : public StateMent{
 //    StateMent* stat1_;
 //    StateMent* stat2_;
     protected:
+        Block( std::vector<StateMent*> * state_vec_ptr_pata ):state_vec_ptr( state_vec_ptr_pata ) {
+
+        }
+
         Block(StateMent*stat1 , StateMent * stat2  ) {
             state_vec_ptr = new std::vector<StateMent*>();
             state_vec_ptr->resize( 2,nullptr);
@@ -181,6 +185,10 @@ class Block : public StateMent{
     public:
 
     static constexpr const char* class_name_ = "block";
+
+    static  StateMent * make( std::vector<StateMent *> * stat ) {
+        return new Block(stat);
+    }
     static  StateMent * make( StateMent * stat1,StateMent * stat2 ) {
         Block * stat1_block = dynamic_cast<Block*>(stat1 ); 
         Block * stat2_block = dynamic_cast<Block*>(stat2);
