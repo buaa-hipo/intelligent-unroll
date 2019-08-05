@@ -28,6 +28,7 @@ class StateMent {
 };
 class Varience :public StateMent{
     std::string name_;
+    bool is_const_;
     void * ptr_;
     std::set<std::string> name_set_;
     std::string get_unique_name() {
@@ -51,24 +52,28 @@ class Varience :public StateMent{
     Varience() {
         LOG(FATAL) << "please use other constructe functions";
     }
-    Varience(const Type &type, std::string & name ) {
+    Varience(const Type &type, std::string & name, bool is_const = true ) {
         type_ = type;
         name_ = get_unique_name() + "_" + name;
+        is_const_ = is_const;
     }
 
-    Varience(const Type &type ) {
+    Varience(const Type &type, bool is_const = true ) {
         type_ = type;
         name_ = get_unique_name();
+        is_const_ = is_const;
     }
     Varience(double * data) {
         type_ = Type( &__double , NOT_VEC);
         ptr_ = reinterpret_cast<void*>(data);
         name_ = get_unique_name();
+        is_const_ = true;
     }
     Varience(int * data) {
         type_ = Type( &__int,NOT_VEC);
         ptr_ = reinterpret_cast<void*>(data);
         name_ = get_unique_name();
+        is_const_ = true;
     }
     virtual Type& get_type() {
         return type_;
@@ -78,6 +83,9 @@ class Varience :public StateMent{
     }
     std::string get_name()const {
         return name_;
+    }
+    bool get_is_const() {
+        return is_const_;
     }
     virtual std::string get_class_name() {
         return class_name_;
@@ -383,19 +391,18 @@ class Const : public Expr{
 class LetStat:public StateMent{
     Varience * res_;
     StateMent * expr_;
-    bool is_const_;
     protected:
-    LetStat(Varience * res, StateMent * expr, bool is_const) : res_(res),expr_(expr),is_const_(is_const) {
+    LetStat(Varience * res, StateMent * expr) : res_(res),expr_(expr) {
         }
     public:
 
     static constexpr const char* class_name_ = "let_stat";
-    static StateMent * make(Varience * res,StateMent * expr, bool is_const=true) {
+    static StateMent * make(Varience * res,StateMent * expr) {
         const Type & res_type = res->get_type();
         const Type & expr_type = expr->get_type();
         CHECK( res_type == expr_type ) << class_name_ <<": " <<res_type << " <-> " << expr_type << "does not match\n" <<
             expr->get_class_name();
-        StateMent * stat_ptr = new LetStat(res,expr,is_const);
+        StateMent * stat_ptr = new LetStat(res,expr);
         return stat_ptr;
     }
     virtual std::string get_class_name() {
@@ -407,10 +414,6 @@ class LetStat:public StateMent{
     StateMent * get_expr() {
         return expr_;
     }
-    bool get_is_const() {
-        return is_const_;
-    }
-
 };
 
 

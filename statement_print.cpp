@@ -37,7 +37,8 @@ void StateMentPrint::print_(Const * stat, std::ostream&os) {
 }
 void StateMentPrint::print_(LetStat * stat,std::ostream&os) {
     PrintSpace(os);
-    if(stat->get_is_const()) {
+    Varience * res_var = stat->get_res();
+    if( res_var->get_is_const()) {
         os << "const ";
     }
     print_(stat->get_res(),os);

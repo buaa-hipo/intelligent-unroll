@@ -317,7 +317,7 @@ llvm::Value * LLVMCodeGen::CodeGen_( LetStat * stat ) {
 
     llvm::Value * value = CodeGen( stat->get_expr() );
         Varience * var = stat->get_res();
-        bool is_const = stat->get_is_const();
+        bool is_const = var->get_is_const();
 
         auto var_val_map_value = var_val_map_.find( var );
         if( is_const ) {
