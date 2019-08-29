@@ -3,11 +3,15 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
-
+#include "configure.h"
 typedef  struct TransAddr {
     int num;
     char * addr;
 }TransAddr ,  *TransAddrPtr ;
+typedef struct ReduceAddr{
+    MASK mask_;
+    int compress_vec[VECTOR];  
+}
 
 class Bit2Addr{
     
@@ -19,5 +23,6 @@ class Bit2Addr{
     friend std::ostream & operator << ( std::ostream & stream , const Bit2Addr& para ) ;
     TransAddr generate( int mask ) ;
 
+    CompressAddr generate_compress( int mask ) ;
 };
 #endif

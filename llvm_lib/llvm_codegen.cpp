@@ -386,9 +386,6 @@ llvm::Value * LLVMCodeGen::CodeGen_(Scatter * stat) {
         build_ptr_->CreateMaskedScatter(data_value,ptr_value,alinements_,mask_value);
         return Null_;
     }
-llvm::Value * LLVMCodeGen::CodeGen_(Init * stat) {
-        return Null_;
-    }
 llvm::Value * LLVMCodeGen::CodeGen_(Gather * stat) {
 
     llvm::Value * addr_value = CodeGen( stat->get_addr());
@@ -740,7 +737,6 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
             SET_DISPATCH(IncAddr);
             SET_DISPATCH(Nop);
             SET_DISPATCH(Scatter);
-            SET_DISPATCH(Init);
             SET_DISPATCH(Gather);
             SET_DISPATCH( Load );
             SET_DISPATCH(Store);

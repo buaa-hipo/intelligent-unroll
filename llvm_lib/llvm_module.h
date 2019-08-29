@@ -16,7 +16,6 @@
 #include <llvm-c/BitWriter.h>
 
 
-template<typename BackendPackedCFunc>
 class LLVMModule  {
  public:
   ~LLVMModule() {
@@ -48,15 +47,16 @@ class LLVMModule  {
         );
         return f; 
   }
-  BackendPackedCFunc GetFunction(
+  uint64_t GetFunction(
       const std::string& name)  {
     
     if (ee_ == nullptr) LazyInitJIT();
     std::lock_guard<std::mutex> lock(mutex_);
     const std::string& fname = name ;
 
-    BackendPackedCFunc faddr =
-        reinterpret_cast<BackendPackedCFunc>(GetFunctionAddr(fname));
+//    uint64_t faddr = reinterpret_cast<BackendPackedCFunc>(GetFunctionAddr(fname));
+
+    uint64_t faddr = GetFunctionAddr(fname);
     if (faddr == nullptr) { LOG(FATAL) << "Can not get function " << fname << "\n";
                             exit(1);
     };

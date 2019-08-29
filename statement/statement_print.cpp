@@ -1,82 +1,52 @@
-#include "statement_pass.hpp"
+#include "statement_print.hpp"
 
-#define SET_DISPATCH(CLASS_NAME) SET_DISPATCH_TEMPLATE( ftype_ptr,CLASS_NAME,StateMent,pass_ )
-StateMent* StateMentPass::pass_(StateMent * stat) {
-    LOG(FATAL) << "\nthe statement %s does not support\n" << stat->get_class_name() ;
-    return nullptr;
+#define SET_DISPATCH(CLASS_NAME) SET_DISPATCH_TEMPLATE( ftype_ptr,CLASS_NAME,StateMent,print_ )
+void StateMentPrint::print_(StateMent * stat,std::ostream&os) {
+    printf("\nthe statement %s does not support\n", stat->get_class_name().c_str());
 }
-StateMent* StateMentPass::pass_(Block * stat) {
+void StateMentPrint::print_(Block * stat,std::ostream&os) {
     std::vector<StateMent* > * state_vec = stat->get_stat_vec();
-    std::vector<StateMent* > * new_state_vec = new std::vector<StateMent*>() ;
-    new_state_vec->resize( state_vec.size() , nullptr);
-    bool is_change = false;
     for(int i = 0 ; i < state_vec->size() ; i++) {
-        StateMent * new_state = pass((*state_vec)[i]);
-        if( new_state != (*state_vec)[i] ) {
-            is_change = true;
-        }
-
-        new_state_vec[i] = new_state; 
-    }
-    if(is_change) {
-        state_vec->clear();
-        delete * state_vec;
-
-        return Block::make( new_state_vec ); 
-    } else {
-        new_state_vec->clear();
-        delete *new_state_vec;
-        return stat;
+        print((*state_vec)[i],os);
     }
 }
-StateMent* StateMentPass::pass_(For * stat) {
-//    StateMent * var_state = stat->get_var();
-    StateMent * begin_state = stat->get_begin();
-    StateMent * end_state = stat->get_end();
-    StateMent * space_state = stat->get_space();
-    StateMent * state_state = stat->Get_stat();
+void StateMentPrint::print_(For * stat,std::ostream&os) {
+    PrintSpace(os);
+    os << "for ( ";
+    print(stat->get_var(),os);
+    os << " = ";
+    print(stat->get_begin(),os);
+    os << " , ";
+    print(stat->get_end(),os);
+    os << " , ";
+    print(stat->get_space(),os);
+    os << " ) { \n";
+    IncSpace();
 
+    print(stat->get_stat(),os);
+    DecSpace();
+    PrintSpace(os);
+    os << "}\n";
 
-//    StateMent * var_state_new = pass(var_state);
-    StateMent * begin_state_new = pass(begin_state);
-    StateMent * end_state_new = pass(end_state);
-    StateMent * space_state_new = pass(space_state);
-
-    StateMent * state_state_new = pass(state_state);
-//    if( var_state == var_state_new &&
-  if(      begin_state == begin_state_new &&
-        end_state == end_state_new &&
-        space_state == space_state_new &&
-        state_state == state_state_new) {
-        return stat;
-    } else {
-        return For::make(begin_state_new,space_state_new,end_state_new,state_state_new); 
-    }
-    
 }
-StateMent* StateMentPass::pass_(Varience * stat) {
-    //os << stat->get_type_str() << " " << stat->get_name(); 
-    return stat;
+void StateMentPrint::print_(Varience * stat , std::ostream&os) {
+    os << stat->get_type_str() << " " << stat->get_name(); 
 }
-StateMent* StateMentPass::pass_(Const * stat) {
-//    os << stat->get_type_str() << "(" << stat->get_data_str() <<")";
-    return stat;
+void StateMentPrint::print_(Const * stat, std::ostream&os) {
+    os << stat->get_type_str() << "(" << stat->get_data_str() <<")";
 }
-StateMent* StateMentPass::pass_(LetStat * stat) {
-    
+void StateMentPrint::print_(LetStat * stat,std::ostream&os) {
+    PrintSpace(os);
     Varience * res_var = stat->get_res();
-    StateMent * expr_state = stat->get_expt();
-
-    Varience * res_var_new = pass_(stat->get_res());
-    
-    StateMent * expr_state_new = pass( expr_state);
-    if( res_var_new == res_var && expr_state == expr_state_new ){
-        return stat;
-    } else { 
-        return LetStat::make( res_var_new,expr_state_new );
+    if( res_var->get_is_const()) {
+        os << "const ";
     }
+    print_(stat->get_res(),os);
+    os << " = ";
+    print(stat->get_expr(),os);
+    os << "\n";
 }
-StateMent* StateMentPass::pass_( IncAddr * stat ) {
+void StateMentPrint::print_( IncAddr * stat ,std::ostream&os) {
     print(stat->get_addr(),os) ;
     os << " + ";
     print(stat->get_inc(),os);
@@ -98,11 +68,6 @@ void StateMentPrint::print_(Scatter * stat, std::ostream&os) {
     print(stat->get_data(),os);
     os << "\n";
 
-}
-void StateMentPrint::print_(Init * stat, std::ostream&os ) {
-    os << stat->get_class_name() << " ";
-    print(stat->get_data(),os);
-    os << "\n";
 }
 void StateMentPrint::print_(Gather * stat, std::ostream&os ) {
     os << "gather ";
@@ -208,10 +173,9 @@ PRINT_BINARY( Div, "/");
 PRINT_BINARY( Mul, "*");
 
 PRINT_BINARY( Minus, "-");
+void StateMentPrint::print(StateMent * stat,std::ostream&os) {
 
-void StateMentPrint::pass(StateMent * stat) {
-
-    using FType = ir_func<StateMent*(StateMent*)>; 
+    using FType = ir_func<void(StateMent*,std::ostream&)>; 
     static FType  * ftype_ptr = nullptr;
     if(ftype_ptr == nullptr) {
         ftype_ptr = new FType();
@@ -226,7 +190,6 @@ void StateMentPrint::pass(StateMent * stat) {
         SET_DISPATCH(IncAddr);
         SET_DISPATCH(Nop);
         SET_DISPATCH(Scatter);
-        SET_DISPATCH(Init);
         SET_DISPATCH(Gather);
         SET_DISPATCH( Load );
         SET_DISPATCH(Store);
@@ -251,3 +214,11 @@ void StateMentPrint::pass(StateMent * stat) {
     (*ftype_ptr)(stat,os);
 
 }
+std::ostream& operator << (std::ostream &stream ,  StateMent*statement ) {
+    StateMentPrint statement_print;
+    statement_print.print( statement,stream );
+    return stream;
+}
+
+
+#undef SET_DISPATCH

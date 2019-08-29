@@ -14,7 +14,9 @@ class StateMent {
     protected:
     Type type_;
     public:
-    
+    std::string node_name_;
+    std::string addr_name_;
+    std::string index_name_;
     static constexpr const char* class_name_ = "statement";
     virtual std::string get_class_name() {
         return class_name_;
@@ -24,7 +26,20 @@ class StateMent {
     }
     virtual Type& get_type() {
         return type_;
-    } 
+    }
+    virtual set_node_name( std::string var_name ) {
+        node_name_ = var_name;
+    }
+    virtual set_addr_name( std::string var_name ) {
+        addr_name_ = var_name;
+    }
+    virtual set_index_name( std::string var_name ) {
+        index_name_ = var_name;
+    }
+
+    virtual set_type( Type type ) {
+        type_ = type;
+    }
 };
 class Varience :public StateMent{
     std::string name_;
@@ -469,6 +484,12 @@ class Scatter: public StateMent{
             StateMent * stat_ptr = new Scatter(addr,index,data,mask);
             return stat_ptr;
         }
+    static    StateMent * make( StateMent * addr, StateMent * index,StateMent * data ) {
+            StateMent * mask = NULL;
+            StateMent * stat_ptr = new Scatter(addr,index,data,mask);
+            return stat_ptr;
+        }
+
     virtual std::string get_class_name() {
         return class_name_;
     }
@@ -485,30 +506,7 @@ class Scatter: public StateMent{
         return mask_;
     }
 };
-class Init : public Expr{
-    StateMent * data_;
 
-    public:
-        template<typename T>
-        Init(T * data,int lanes) {
-            data_ = new Const( data,lanes );
-            type_ = data_->get_type();
-        }
-    public:
-
-    static constexpr const char* class_name_ = "init";
-        template<typename T>
-        static StateMent* make(T * data,int lanes=1) {
-            StateMent* stat_ptr = new Init( data ,lanes);
-            return stat_ptr;
-        } 
-    virtual std::string get_class_name() {
-        return class_name_;
-    }
-    StateMent * get_data() {
-        return data_;
-    } 
-};
 class Gather: public Expr{
     StateMent * addr_;
     StateMent * index_;
@@ -526,6 +524,11 @@ class Gather: public Expr{
     static constexpr const char* class_name_ = "gather";
     static  StateMent * make( StateMent * addr, StateMent * index , StateMent * mask) {
             StateMent * stat_ptr = new Gather(addr,index,mask);
+            return stat_ptr;
+        }
+    static  StateMent * make( StateMent * addr, StateMent * index ) {
+        mask = NULL;
+        StateMent * stat_ptr = new Gather(addr,index,mask);
             return stat_ptr;
         }
     virtual std::string get_class_name() {

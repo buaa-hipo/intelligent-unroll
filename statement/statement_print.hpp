@@ -37,7 +37,6 @@ void print_(Nop * stat,std::ostream&os ) ;
 
 void print_(Scatter * stat, std::ostream&os) ;
 
-void print_(Init * stat, std::ostream&os ) ;
 
 void print_(Gather * stat, std::ostream&os ) ;
 

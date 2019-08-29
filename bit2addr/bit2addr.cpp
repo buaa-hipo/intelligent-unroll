@@ -70,6 +70,23 @@
         return trans_addr_;
     }
 
+    CompressAddr Bit2Addr::generate_compress( int mask ) {
+            int ii = 0;
+
+            CompressAddr compress_addr;
+            for( int i = 0; i < VECTOR ; i++ ) {
+                if(( (1<<i) & circle_mask ) != 0) {
+                    compress_vec[ii] = i;
+                    ii++;
+                }
+            }
+            MASK compress_mem_mask = 0xff;
+            compress_mem_mask >>= (VECTOR - ii);
+            for( ; ii < VECTOR ; ii++ ) {
+                compress_addr.compress_vec[ii] = VECTOR;
+            }
+            compress_addr.mask_ = compress_mem_mask;
+    }
 /*#define VECTOR 8
 int main(int argc , char ** argv) {
     Bit2Addr generate_trans_code( VECTOR );

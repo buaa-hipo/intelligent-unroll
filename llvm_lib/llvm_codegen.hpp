@@ -156,7 +156,6 @@ class LLVMCodeGen {
 
     Value * CodeGen_(Scatter * stat) ;
 
-    Value * CodeGen_(Init * stat) ;
 
     Value * CodeGen_(Gather * stat) ;
 
