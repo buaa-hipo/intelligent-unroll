@@ -1,47 +1,58 @@
 CC=g++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags`  
-
-CFLAGS=-std=c++11 -O3 -ffast-math  `llvm-config --cxxflags` -frtti -Ibit2addr/ 
+INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/
+CFLAGS=-std=c++11 -O3 -ffast-math  -frtti
+INCLUDE_LLVM_DIR=`llvm-config --cxxflags` 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
 LD=g++ 
 LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11
- 
+LINK_DIR=build/ 
 
 all: sum
-LKFILE= Timers.o llvm_common.o util.o llvm_codegen.o type.o statement.o statement_print.o csr_matrix.o csr5_statement.o analyze.o bit2addr.o pagerank_fuse_all.o element.o  tools_set.o sum.o
+LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o sum.o 
 sum: $(LKFILE)
 	$(LD) $^ $(LDFLAGS) -o $@
+parse.o:parse/parse.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+tools_set.o:tools_set/tools_set.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+transform_data.o:transform_data/transform_data.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+node2state.o:node/node2state.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+pass.o:pass/state_pass.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+state_formulation.o:pass/state_formulation.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
 
-sum.o: sum.cpp analyze_csr5.hpp statement.hpp csr5_statement.hpp type.hpp statement_print.hpp small_case.hpp ir_func.hpp log.h llvm_lib/llvm_codegen.hpp llvm_lib/llvm_module.h llvm_lib/llvm_print.hpp
-	$(CC) $(CFLAGS) -c $<
-#	$(CC) $< -S $(CFLAGS) -o sum.S
-Timers.o:Timers.cpp
+state_optimization.o:pass/state_optimization.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+
+intelligent_unroll.o:intelligent_unroll/intelligent_unroll.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+llvm_common.o:llvm_lib/llvm_common.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $(INCLUDE_LLVM_DIR) $< -o $@
+util.o:util/util.cpp
 	$(CC) $< -c -o $@
+llvm_codegen.o:llvm_lib/llvm_codegen.cpp 
+	$(CC) -c $(INCLUDE) $(INCLUDE_LLVM_DIR)  $(CFLAGS) $< -o $@
+type.o:type/type.cpp 
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+statement.o:statement/statement.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+statement_print.o:statement/statement_print.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+csr_matrix.o:io_matrix/csr_matrix.cpp
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+Timers.o:Timer/Timers.cpp
+	$(CC) $< -c -o $@
+sum.o: sum.cpp 
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+#	$(CC) $< -S $(CFLAGS) -o sum.S
 #csr_matrix.o:csr_matrix.cpp
 #	$(CC) $< -c -o $@
-util.o:util.cpp
-	$(CC) $< -c -o $@
 
-llvm_codegen.o:llvm_lib/llvm_codegen.cpp llvm_lib/llvm_codegen.hpp statement.hpp
-	$(CC) $(CFLAGS) $< -c -o $@
-llvm_common.o:llvm_lib/llvm_common.cpp
-	$(CC) $(CFLAGS) $< -c -o $@
 
-type.o:type.cpp type.hpp
-	$(CC) $(CFLAGS) $< -c -o $@
-statement.o:statement.cpp statement.hpp
-	$(CC) $(CFLAGS) $< -c -o $@
-
-csr_matrix.o:csr_matrix.cpp
-	$(CC) $(CFLAGS) $< -c -o $@
-
-element.o:element.cpp
-	$(CC) -Ibit2addr/ -std=c++11  $< -c -o $@
-statement_print.o:statement_print.cpp statement.hpp
-	$(CC) $(CFLAGS) $< -c -o $@
-
-csr5_statement.o:csr5_statement.cpp statement.hpp
-	$(CC) -Ibit2addr/ -std=c++11  $< -c -o $@
 
 bit2addr.o:bit2addr/bit2addr.cpp
 	$(CC) -std=c++11  $< -c -o $@
@@ -51,13 +62,6 @@ sum.bc: sum
 sum.ll: sum.bc
 	llvm-dis $<
 
-pagerank_fuse_all.o:pagerank_fuse_all.cpp
-	$(CC) -std=c++11 -O3 -I./bit2addr  $< -c -o $@
-analyze.o:analyze.cpp
-	$(CC) -std=c++11 -O3  $< -c -o $@
 
-tools_set.o:tools_set.cpp
-	$(CC) -std=c++11 -O3  $< -c -o $@
 clean:
 	-rm -f sum.o sum sum.bc sum.ll *.o
-#~/llvm-project-llvmorg-7.0.1/build/bin/llc -mcpu=x86-64 -mattr=+fma,+avx2,avx,sse,sse2 sum.bc -o sum.S

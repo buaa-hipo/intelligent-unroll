@@ -1,6 +1,11 @@
-#include "statement_pass.hpp"
+#include "state_pass.hpp"
 
-#define SET_DISPATCH(CLASS_NAME) SET_DISPATCH_TEMPLATE( ftype_ptr,CLASS_NAME,StateMent,pass_ )
+#define SET_DISPATCH(CLASS_NAME)  \
+            ftype_ptr->set_dispatch<CLASS_NAME>([this](StateMent * __basic_class_ptr)->StateMent*{\
+                CLASS_NAME * __class_name = dynamic_cast<CLASS_NAME*>( __basic_class_ptr );\
+                if(__class_name==NULL){printf("type StateMent" "-> "#CLASS_NAME"failt");exit(1);}\
+                this->pass_(__class_name);})\
+
 StateMent* StateMentPass::pass_(StateMent * stat) {
     LOG(FATAL) << "\nthe statement %s does not support\n" << stat->get_class_name() ;
     return nullptr;
@@ -8,7 +13,7 @@ StateMent* StateMentPass::pass_(StateMent * stat) {
 StateMent* StateMentPass::pass_(Block * stat) {
     std::vector<StateMent* > * state_vec = stat->get_stat_vec();
     std::vector<StateMent* > * new_state_vec = new std::vector<StateMent*>() ;
-    new_state_vec->resize( state_vec.size() , nullptr);
+    new_state_vec->resize( state_vec->size() , nullptr);
     bool is_change = false;
     for(int i = 0 ; i < state_vec->size() ; i++) {
         StateMent * new_state = pass((*state_vec)[i]);
@@ -19,13 +24,9 @@ StateMent* StateMentPass::pass_(Block * stat) {
         (*new_state_vec)[i] = new_state; 
     }
     if(is_change) {
-        state_vec->clear();
-        delete * state_vec;
 
         return Block::make( new_state_vec ); 
     } else {
-        new_state_vec->clear();
-        delete *new_state_vec;
         return stat;
     }
 }
@@ -34,7 +35,7 @@ StateMent* StateMentPass::pass_(For * stat) {
     StateMent * begin_state = stat->get_begin();
     StateMent * end_state = stat->get_end();
     StateMent * space_state = stat->get_space();
-    StateMent * state_state = stat->Get_stat();
+    StateMent * state_state = stat->get_stat();
 
 
 //    StateMent * var_state_new = pass(var_state);
@@ -65,15 +66,14 @@ StateMent* StateMentPass::pass_(Const * stat) {
 StateMent* StateMentPass::pass_(LetStat * stat) {
     
     Varience * res_var = stat->get_res();
-    StateMent * expr_state = stat->get_expt();
+    StateMent * expr_state = stat->get_expr();
 
-    Varience * res_var_new = pass_(stat->get_res());
     
     StateMent * expr_state_new = pass( expr_state);
-    if( res_var_new == res_var && expr_state == expr_state_new ){
+    if(  expr_state == expr_state_new ){
         return stat;
     } else { 
-        return LetStat::make( res_var_new,expr_state_new );
+        return LetStat::make( res_var,expr_state_new );
     }
 }
 StateMent* StateMentPass::pass_( IncAddr * stat ) {
@@ -83,7 +83,7 @@ StateMent* StateMentPass::pass_( IncAddr * stat ) {
     StateMent * addr_state_new = pass( addr_state );
     StateMent * inc_state_new = pass(inc_state);
     
-    if( addr_state_new == addr_state && inc_state_new = inc_state ) {
+    if( addr_state_new == addr_state && inc_state_new == inc_state ) {
         return stat;
     } else {
         return IncAddr::make( addr_state_new , inc_state_new );
@@ -200,29 +200,30 @@ StateMent * StateMentPass::pass_( InsertElement * stat) {
         index_state == index_state_new ) {
         return stat;
     } else {
-        return ExtractElement::make(to_state_new ,from_state_new,index_state_new);
+        return InsertElement::make(to_state_new ,from_state_new,index_state_new);
     }
 
 }
 
-void StateMentPrint::print_(Store * stat, std::ostream&os ) {
+StateMent* StateMentPass::pass_(Store * stat ) {
 
-    StateMent * data_state = stat->get_data();
     StateMent * addr_state = stat->get_addr();
     bool is_alined = stat->get_is_aligned();
     StateMent * mask_state = stat->get_mask();
+
+    StateMent * data_state = stat->get_data();
     //new
 
-    StateMent * data_state_new = pass(data_state);
     StateMent * addr_state_new = pass(addr_state);
     StateMent * mask_state_new = pass(mask_state);
     
+    StateMent * data_state_new = pass(data_state);
     if( data_state == data_state_new &&
         addr_state == addr_state_new &&
         mask_state == mask_state_new) {
         return stat;
     } else {
-        return Load::make( addr_state_new, data_state_new, mask_state_new, is_alined );
+        return Load::make( addr_state_new,  mask_state_new, is_alined );
     }
 
 }
@@ -307,7 +308,7 @@ StateMent * StateMentPass::pass_(BitCast * stat ) {
     if( v1_state == v1_state_new  ) {
         return stat;
     } else {
-        return BitCast::make(v1_state_new);
+        return BitCast::make(v1_state_new,stat->get_type());
     }
 }
 #define PASS_BINARY( CLASSNAME ,OP) \
@@ -332,8 +333,8 @@ PASS_BINARY( Mul, "*");
 
 PASS_BINARY( Minus, "-");
 
-void StateMentPass::pass(StateMent * stat) {
-    if(stat== NULL) return;
+StateMent* StateMentPass::pass(StateMent * stat) {
+    if(stat== NULL) return NULL;
     using FType = ir_func<StateMent*(StateMent*)>; 
     static FType  * ftype_ptr = nullptr;
     if(ftype_ptr == nullptr) {
@@ -370,6 +371,7 @@ void StateMentPass::pass(StateMent * stat) {
         SET_DISPATCH(ExtractElement );
         SET_DISPATCH(InsertElement );
     }
-    (*ftype_ptr)(stat,os);
+    return (*ftype_ptr)(stat);
 
 }
+#undef SET_DISPATCH

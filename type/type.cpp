@@ -1,6 +1,8 @@
 #include "type.hpp"
 Type __void = Type(VOID,NOT_VEC);
 Type __int = Type( INT,NOT_VEC );
+
+Type __bool = Type( BOOL,NOT_VEC );
 Type __int8 = Type( INT8,NOT_VEC );
 
 Type __int64 = Type( INT64,NOT_VEC );
@@ -100,3 +102,32 @@ Type __float_ptr_v = __float_ptr_v16;
 Type __int_ptr_v = __int_ptr_v16;
 Type __int8_ptr_v = __int8_ptr_v16;
 #endif
+Type type_scalar_ptr2vector_ptr( const Type type ) {
+    Type ret_type;
+    if(type == __int_ptr) {
+        ret_type = __int_v_ptr;
+    } else if( type == __double_ptr ) {
+        ret_type = __double_v_ptr;
+    } else if( type == __float_ptr ) {
+        ret_type = __float_v_ptr;
+    } else {
+        LOG(FATAL) << "Unsupported";
+    }
+    return ret_type;
+}
+Type type_scalar_ptr2ptr_vector( const Type type ) {
+    Type ret_type;
+    if(type == __int_ptr) {
+        ret_type = __int_ptr_v;
+    } else if( type == __double_ptr ) {
+        ret_type = __double_ptr_v;
+    } else if( type == __float_ptr ) {
+        ret_type = __float_ptr_v;
+    } else {
+        LOG(FATAL) << "Unsupported";
+    }
+    return ret_type;
+}
+
+
+

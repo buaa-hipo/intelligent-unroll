@@ -57,7 +57,7 @@ class LLVMModule  {
 //    uint64_t faddr = reinterpret_cast<BackendPackedCFunc>(GetFunctionAddr(fname));
 
     uint64_t faddr = GetFunctionAddr(fname);
-    if (faddr == nullptr) { LOG(FATAL) << "Can not get function " << fname << "\n";
+    if (faddr == 0) { LOG(FATAL) << "Can not get function " << fname << "\n";
                             exit(1);
     };
     return faddr;

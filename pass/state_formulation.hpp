@@ -1,19 +1,20 @@
-class FormulationPass : StateMentPass{
-    StateMent * nop_;
-    std::map<Varience*,Varience*> arg2var_map_;
-    std::map<Varience*, Varience *> varP_varVP_map_;
+#ifndef STATE_FORMULATION_HPP
+#define STATE_FORMULATION_HPP
 
-    std::map<Varience*, Varience *> varP_varPV_map_;
+#include "statement.hpp"
+#include <stdlib.h>
+#include "configure.hpp"
+#include <string>
+#include <set>
+#include <vector>
+#include <map>
+#include <ulimit.h>
+#include<climits>
+#include <unordered_map>
+#include "type.hpp"
 
-    FormulationPass() {
-        nop_ = Nop::make();
-    }
-virtual    StateMent* pass_(Block * stat ) ;
-virtual    StateMent* pass_(LetStat * stat ) ;
-virtual    StateMent* pass_(Gather * stat   ) ;
-virtual    StateMent* pass_(Load * stat);
-virtual    StateMent* pass_(Add * stat   );
-virtual    StateMent* pass_(Div * stat   ) ;
-virtual    StateMent* pass_(Store * stat  ) ;
-virtual    StateMent* pass_(Scatter * stat  ) ;
-}
+StateMent * formulation_state( 
+        const std::map<std::string, Varience *> &name_varP_varVP_map,
+        const std::map<std::string, Varience *> &name_varP_varPV_map,
+        StateMent * state ) ;
+#endif

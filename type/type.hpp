@@ -105,35 +105,11 @@ class Type {
         return pointer2type_ != nullptr;
     }
 };
-Type type_scalar_ptr2ptr_vector( Type type ) {
-    Type ret_type;
-    if(type == __int_ptr) {
-        ret_type = __int_ptr_v;
-    } else if( type == __double_ptr ) {
-        ret_type = __double_ptr_v;
-    } else if( type == __float_ptr ) {
-        ret_type = __float_ptr_v;
-    } else {
-        LOG(FATAL) << "Unsupported";
-    }
-    return ret_type;
-}
 
-Type type_scalar_ptr2vector_ptr( Type type ) {
-    Type ret_type;
-    if(type == __int_ptr) {
-        ret_type = __int_v_ptr;
-    } else if( type == __double_ptr ) {
-        ret_type = __double_v_ptr;
-    } else if( type == __float_ptr ) {
-        ret_type = __float_v_ptr;
-    } else {
-        LOG(FATAL) << "Unsupported";
-    }
-    return ret_type;
-}
 extern Type __void ;
 extern Type __int ;
+
+extern Type __bool ;
 extern Type __float ;
 extern Type __double;
 extern Type __int8;
@@ -171,8 +147,8 @@ extern Type __int64;
  extern Type __int64_v_ptr;
  extern Type __int_ptr_v;
 
-
-
+Type type_scalar_ptr2vector_ptr( const Type type ) ;
+Type type_scalar_ptr2ptr_vector( const Type type );
 
 #endif
 

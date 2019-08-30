@@ -3,15 +3,15 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
-#include "configure.h"
+#include "configure.hpp"
 typedef  struct TransAddr {
     int num;
     char * addr;
 }TransAddr ,  *TransAddrPtr ;
-typedef struct ReduceAddr{
+typedef struct CompressAddr{
     MASK mask_;
     int compress_vec[VECTOR];  
-}
+}CompressAddr;
 
 class Bit2Addr{
     

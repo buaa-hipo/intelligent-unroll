@@ -27,17 +27,17 @@ class StateMent {
     virtual Type& get_type() {
         return type_;
     }
-    virtual set_node_name( std::string var_name ) {
+    virtual void set_node_name( std::string var_name ) {
         node_name_ = var_name;
     }
-    virtual set_addr_name( std::string var_name ) {
+    virtual void set_addr_name( std::string var_name ) {
         addr_name_ = var_name;
     }
-    virtual set_index_name( std::string var_name ) {
+    virtual void set_index_name( std::string var_name ) {
         index_name_ = var_name;
     }
 
-    virtual set_type( Type type ) {
+    virtual void set_type( Type type ) {
         type_ = type;
     }
 };
@@ -315,19 +315,25 @@ class Const : public Expr{
     public:
 
     static constexpr const char * class_name_ = "const";
-    Const(int data) {
+    template<typename T>
+    Const( T data) {
+        if( typeid(T) == typeid(int) ) {
+            type_ = __int;
+        } else if( typeid(T) == typeid(double) ) {
+            type_ = __double;
+        } else if( typeid(T) == typeid(bool) ) {
+            type_ = __bool;
+        } else if( typeid(uint64_t) == typeid(T) ){
+            type_ = __int64;
+        } {
+            LOG(FATAL) << "Unsupport Type";
+        }
+
         type_ = Type(INT,NOT_VEC);
         int * ptr = (int*)malloc(sizeof(int));
 
         ptr[0] = data;
         data_ = reinterpret_cast<void*>(ptr);
-    }
-    Const( double data) {
-        type_ = Type(DOUBLE,NOT_VEC);
-        double * ptr = (double*)malloc(sizeof(double));
-        ptr[0] = data;
-        data_ = reinterpret_cast<void*>(ptr);
-   
     }
     template<typename T>
     Const(T * data, int lanes) {
@@ -416,6 +422,7 @@ class LetStat:public StateMent{
     StateMent * expr_;
     protected:
     LetStat(Varience * res, StateMent * expr) : res_(res),expr_(expr) {
+            node_name_ = expr->node_name_;
         }
     public:
 
@@ -476,6 +483,7 @@ class Scatter: public StateMent{
     StateMent * mask_;
     protected:
         Scatter( StateMent * addr,StateMent * index,StateMent * data ,StateMent * mask): addr_(addr),index_(index),data_(data),mask_(mask) {
+            node_name_ = addr->node_name_;
         }
     public:
 
@@ -515,6 +523,7 @@ class Gather: public Expr{
         Gather( StateMent * addr,StateMent * index,StateMent* mask ): addr_(addr),index_(index),mask_(mask) {
             Type * type_ptr_tmp = &addr->get_type();
 
+            node_name_ = addr->node_name_;
             
             type_ = *type_ptr_tmp->get_pointer2type();
             type_.set_lanes(type_ptr_tmp->get_lanes());
@@ -527,7 +536,7 @@ class Gather: public Expr{
             return stat_ptr;
         }
     static  StateMent * make( StateMent * addr, StateMent * index ) {
-        mask = NULL;
+        StateMent * mask = NULL;
         StateMent * stat_ptr = new Gather(addr,index,mask);
             return stat_ptr;
         }
@@ -554,12 +563,14 @@ class Load : public Expr {
     protected:
     Load( StateMent * addr,bool is_alined):addr_(addr),is_alined_(is_alined) {
             has_mask_ = false;
+            node_name_ = addr->node_name_;
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
     }
     Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask),is_alined_(is_alined) {
             has_mask_ = true;
+            node_name_ = addr->node_name_;
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
@@ -672,11 +683,13 @@ class Store :public StateMent {
     bool has_mask_;
     protected:
     Store( StateMent * addr, StateMent * data ,bool is_alined) : addr_(addr),data_(data),is_alined_(is_alined),has_mask_(false){
+        node_name_ = addr->node_name_;
         type_ = data->get_type();
     }
 
     Store( StateMent * addr, StateMent * data ,StateMent * mask,bool is_alined) : addr_(addr),data_(data),mask_(mask),is_alined_(is_alined),has_mask_(true){
         
+        node_name_ = addr->node_name_;
         type_ = data->get_type();
     }
 

@@ -1,14 +1,18 @@
 #ifndef PARSE_HPP
 #define PARSE_HPP
-typedef enum{Input, Output,Float,Double,Int, Var, Lambda,LeftBracket, RightRracket, Colon, Mul, Add,MulEqual,Equal,AddEqual,Div, End,Comma } TokenType;
+#include "type.hpp"
+#include "log.h"
+#include "node.hpp"
+typedef enum{Input, Output,Float,Double,Int, FloatPtr,DoublePtr,IntPtr,Var, Lambda,LeftBracket, RightBracket, Colon, Mult, Add,MultEqual,Equal,AddEqual,Div, End,Comma } TokenType;
 typedef struct Token {
     TokenType token_type_;
     std::string token_name_;
 } Token; 
-typedef enum{ Mult, Add, Div , Gather, Scatter,Load } OpType;
-typedef enum{ var_float,var_double,var_int,var_float_ptr,var_double_ptr,var_int_ptr } VarType;
-VarType GetBasicType( VarType var_type ) {
-     switch( token_type  ) {
+//typedef enum{ Mult, Add, Div , Gather, Scatter,Load } OpType;
+//typedef enum { var_float,var_double,var_int,var_float_ptr,var_double_ptr,var_int_ptr } VarType;
+/*
+VarType GetBasicType( VarType var_type) {
+     switch( var_type  ) {
         case FloatPtr:
             return var_float;
         case DoublePtr:
@@ -20,35 +24,38 @@ VarType GetBasicType( VarType var_type ) {
     }
 
 }
-VarType TokenType2VarType( TokenType token_type ) {
+*/
+/*Type TokenType2Type( TokenType token_type ) {
 
     switch( token_type  ) {
         case FloatPtr:
-            return var_float_ptr;
+            return __float_ptr;
         case DoublePtr:
-            return var_double_ptr;
+            return __double_ptr;
         case IntPtr:
-            return var_int_ptr;
+            return __int_ptr;
         case Float:
-            return var_float;
+            return __float;
         case Double:
-            return var_double;
+            return __double;
         case Int:
-            return var_int;
+            return __int;
         default:
             LOG(FATAL) << "Transfer fault";
     }
 }
+*/
+
 void parse_expression( 
-        const std::string expr_str,
-        ////output
+        const std::string &expr_str,
         Node * &root_node_ptr,
         std::set<std::string> &gather_set,
         std::set<std::string> &scatter_set,
         std::set<std::string> &reduction_set,
-        std::map<std::string, VarType >  &name_type_map,
+        std::map<std::string, Type >  &name_type_map,
         std::vector<std::string> & input_var_vec,
-        std::set<std::string> & iterates_set
+        std::set<std::string> & iterates_set,
+        std::string & output_name
         ) ;
 
 #endif

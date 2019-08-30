@@ -5,74 +5,10 @@
  *     return a + b;
  * }
  */
-
-#include "llvm_lib/llvm_module.h"
-#include <map>
-#include "llvm/IR/InstrTypes.h"
-
-#include "llvm/IR/Verifier.h"
-#include <cstdlib>
-#include "llvm/ADT/APInt.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/ExecutionEngine/MCJIT.h"
-#include "llvm/IR/Argument.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include <algorithm>
-#include <cassert>
-#include <memory>
-#include <vector>
-#include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/ExecutionEngine/Interpreter.h>
-#include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/DerivedTypes.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/Support/ManagedStatic.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/ExecutionEngine/SectionMemoryManager.h>
-#include <llvm/IR/DIBuilder.h>
-
-
-/////////////////////////////
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Target.h>
-#include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
-
-#include "csr_matrix.h"
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "csr_matrix.h"
 #include "Timers.hpp"
-#include <sstream>
-#include "statement.hpp"
-#include "csr5_statement.hpp"
-#include "statement_print.hpp"
-#include "small_case.hpp"
-#include "llvm_lib/llvm_codegen.hpp"
-#include "analyze.h"
-#include "pagerank_fuse_all.hpp"
+#include "intelligent_unroll.hpp"
 #include "util.h"
+#include "csr_matrix.h"
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
@@ -164,22 +100,46 @@ int main( int argc , char const * argv[] ) {
     init_vec( y_array_bak, row_num , 0 );
 
     init_vec( y_array_time, row_num , 0 );
+    int * row_ptr_all = SIMPLE_MALLOC( int,column_num );
+    for(int row_i = 0 ; row_i < row_num; row_i++) {
+        int begin = row_ptr[row_i];
+        int end = row_ptr[row_i+1];
+        for( int j = begin ; j < end ; j++ ) {
+            row_ptr_all[j] = row_i;
+        }
+    }
+    std::string spmv_str = 
+    "input: int * row_ptr, \
+            int * column_ptr,\
+            double * x_array,\
+            double * data_ptr \
+     output:double * y_array \
+     lambda i : \
+            y_array[ row_ptr[i] ] += data_ptr[i] \
+            * x_array[column_ptr[i]]\
+            ";
+    std::map<std::string,void*> name2ptr_map;
+    name2ptr_map[ "row_ptr" ] = row_ptr_all;
 
-
-    PageRankFuseAll page_rank_fuse_all;
-
-    page_rank_fuse_all.compiler( row_ptr, column_ptr, row_num, column_num ,data_ptr);
-
+    name2ptr_map[ "column_ptr" ] = column_ptr;
+    name2ptr_map[ "x_array" ] = x_array;
+    name2ptr_map[ "data_ptr" ] = data_ptr;
+    name2ptr_map[ "y_array" ] = y_array;
+    
+    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,column_num/VECTOR );
+    using FuncType = void(*)( double*,int*,int*,double*,double*);
+    FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");
         spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
 
     Timer::endTimer("aot");
 
     Timer::printTimer("aot");
-    page_rank_fuse_all( y_array, x_array,data_ptr,column_ptr,row_ptr,row_num );
+    
+    func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
 #ifndef DEBUG
      for( int i = 0 ; i < 50 ; i++ )
-        page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
+        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
 #define TIMES 100
 #else
@@ -188,7 +148,7 @@ int main( int argc , char const * argv[] ) {
 #endif
     Timer::startTimer("jit");
      for( int i = 0 ; i < TIMES ; i++ )
-        page_rank_fuse_all( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num );
+        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);

@@ -70,13 +70,13 @@
         return trans_addr_;
     }
 
-    CompressAddr Bit2Addr::generate_compress( int mask ) {
+    CompressAddr Bit2Addr::generate_compress( int circle_mask ) {
             int ii = 0;
 
             CompressAddr compress_addr;
             for( int i = 0; i < VECTOR ; i++ ) {
                 if(( (1<<i) & circle_mask ) != 0) {
-                    compress_vec[ii] = i;
+                    compress_addr.compress_vec[ii] = i;
                     ii++;
                 }
             }

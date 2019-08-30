@@ -2,14 +2,24 @@
 #define TOOLS_SET_HPP
 #include <stdlib.h>
 #include "configure.hpp"
+#include <string>
+#include <set>
+#include <vector>
+#include <map>
+#include <ulimit.h>
+#include<climits>
+#include <unordered_map>
+
 typedef enum{DisOrder = 0, Inc = 1, Dec = 2, IncContinue = 3, DecContinue = 4 ,Equel = 5} OrderType;
 class Info{
     public:
     int mask_;
-    virtual int get_mask() {
+
+    OrderType order_type_; 
+    virtual int get_mask()const {
         return mask_;
     }
-}
+};
 
 typedef union DisorderAddr {
     int64_t data;
@@ -19,19 +29,18 @@ typedef union DisorderAddr {
 
 class GatherInfo : public Info{
     public:
-    OrderType order_type_; 
     DisorderAddr disorder_addr_;
     int data_index_[VECTOR];
 };
 class ScatterInfo : public GatherInfo{
-}
+};
 
 
 
 class ReductionInfo : public Info {
-    OrderType order_type_;
+    public:
     DisorderAddr reduction_addr_[ LOG_VECTOR ];
-}
+};
 
 void generate_information( 
         const std::set<std::string> & scatter_set,

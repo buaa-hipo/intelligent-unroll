@@ -5,6 +5,7 @@
 #include "type.hpp"
 #include <iostream>
 class StateMentPass{
+    protected:
 virtual    StateMent* pass_(StateMent * stat ) ;
 virtual    StateMent* pass_(Block * stat ) ;
 virtual    StateMent* pass_(For * stat ) ;
@@ -14,7 +15,6 @@ virtual    StateMent* pass_(LetStat * stat ) ;
 virtual    StateMent* pass_( IncAddr * stat  ) ;
 virtual    StateMent* pass_(Nop * stat  ) ;
 virtual    StateMent* pass_(Scatter * stat  ) ;
-virtual    StateMent* pass_(Init * stat   ) ;
 virtual    StateMent* pass_(Gather * stat   ) ;
 virtual    StateMent* pass_(Load * stat  ) ;
 virtual    StateMent* pass_( Print * stat) ;
