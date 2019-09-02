@@ -75,7 +75,7 @@ int sum_int( const int * array , const int size ) {
     return sum;
 }
 
-inline void print_vector_double(const double * a, const  int len) {
+void print_vector_double(const double * const a, const  int len) {
     int i;
     for( i = 0 ; i < len ; i++) {
         printf("%lf ",a[i]);

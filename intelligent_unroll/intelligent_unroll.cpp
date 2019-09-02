@@ -1,4 +1,5 @@
 #include "intelligent_unroll.hpp"
+#include "statement_print.hpp"
 class IntelligentUnroll{
 
     ///produced by parse expression
@@ -6,6 +7,8 @@ class IntelligentUnroll{
     std::set<std::string> gather_set_;
     std::set<std::string> scatter_set_;
     std::set<std::string> reduction_set_;
+
+    std::set<std::string> load_set_;
     std::map<std::string, Type >  name_type_map_;
 
     std::vector<std::string> input_name_vec_;
@@ -36,7 +39,7 @@ class IntelligentUnroll{
     std::vector<StateMent *> func_init_state_vec_;
     StateMent * calculate_state_; 
 
-    FuncStatement * func_state_ptr_;
+    FuncStatement * func_state_ptr_=NULL;
     ////produced by passes
     //
     
@@ -55,16 +58,19 @@ class IntelligentUnroll{
                           gather_set_,
                           scatter_set_,
                           reduction_set_,
+                          load_set_,
                           name_type_map_,
                           input_name_vec_,
                           iterates_set_,
                           output_name_
                           );
+
+        LOG(INFO) << "parse expression finished";
         ///////////generate information
         generate_information( 
                 scatter_set_,
                 reduction_set_, 
-                gather_set_, 
+                gather_set_,
                 name2ptr_map,
                 table_column_num,
                 gather_map_,
@@ -72,12 +78,14 @@ class IntelligentUnroll{
                 reduction_map_,
                 same_feature_map_,
                 same_feature_range_map_  );
+        LOG(INFO) << "generate information finished";
         ///////////transform data
         transform_data( name_type_map_,
                         name2ptr_map,
                         gather_set_,
                         scatter_set_,
                         reduction_set_,
+                        load_set_,
                         gather_map_,
                         scatter_map_,
                         reduction_map_,
@@ -86,11 +94,14 @@ class IntelligentUnroll{
                         gather_name_new_ptr_map_,
                         reduction_name_new_ptr_map_,
                         scatter_name_new_ptr_map_,
-                        name_new_ptr_map_
+                        name_new_ptr_map_,
+                        table_column_num
         ); 
 
+        LOG(INFO) << "transform data finished";
         ////////////////node tree to code seed
         node_tree2state(
+                output_name_,
                 input_name_vec_,
                 iterates_set_,
                 name_type_map_,
@@ -110,11 +121,15 @@ class IntelligentUnroll{
                 func_state_ptr_,
                 root_node_ptr_
                 );
+
+        LOG(INFO) << "node tree 2 statement finished";
         ///////////// formulation and optimization
         calculate_state_ = formulation_state(
                 name_varP_varVP_map_,
                 name_varP_varPV_map_,
                 calculate_state_ );
+
+        LOG(INFO) << "formulation statement finished";
         calculate_state_ = optimization_state(
                 gather_map_,
                 scatter_map_,
@@ -130,18 +145,25 @@ class IntelligentUnroll{
                 same_feature_range_map_,
                 output_name_,
                 calculate_state_
-        ); 
-        /////////////combin statement with func_statement
-        func_state_ptr_->set_state( Block::make(CombinStatVec( func_init_state_vec_ ), calculate_state_ ) );
+        );
 
+        LOG(INFO) << "optimize statement finished";
+        /////////////combin statement with func_statement
+        StateMent * init_func = CombinStatVec(func_init_state_vec_);
+        func_state_ptr_->set_state( Block::make( init_func, calculate_state_ ) );
+        
+        LOG(INFO) << "merge state finished";
         /////////// 
         LLVMCodeGen codegen;
         codegen.AddFunction( func_state_ptr_ );
+
+        LOG(INFO) << "add function finished";
         llvm_module_ptr_ = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
 
         llvm_module_ptr_->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
          
         uint64_t func = llvm_module_ptr_->GetFunction("function");
+        LOG(INFO) << "generated module finished";
         return func;
     }
 }; 

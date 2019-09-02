@@ -3,7 +3,29 @@
 #include "type.hpp"
 #include "log.h"
 #include "node.hpp"
-typedef enum{Input, Output,Float,Double,Int, FloatPtr,DoublePtr,IntPtr,Var, Lambda,LeftBracket, RightBracket, Colon, Mult, Add,MultEqual,Equal,AddEqual,Div, End,Comma } TokenType;
+#include <string>
+typedef enum{
+    Input = 0, 
+    Output = 1,
+    Float = 2,
+    Double = 3,
+    Int = 4,
+    FloatPtr = 5,
+    DoublePtr = 6,
+    IntPtr = 7,
+    Var = 8, 
+    Lambda = 9,
+    LeftBracket = 10, 
+    RightBracket = 11,
+    Colon = 12, 
+    Mult = 13, 
+    Add = 14,
+    MultEquel = 15,
+    Equel = 16,
+    AddEquel = 17,
+    Div = 18, 
+    End = 19,
+    Comma = 20 } TokenType;
 typedef struct Token {
     TokenType token_type_;
     std::string token_name_;
@@ -52,6 +74,7 @@ void parse_expression(
         std::set<std::string> &gather_set,
         std::set<std::string> &scatter_set,
         std::set<std::string> &reduction_set,
+        std::set<std::string> &load_set,
         std::map<std::string, Type >  &name_type_map,
         std::vector<std::string> & input_var_vec,
         std::set<std::string> & iterates_set,

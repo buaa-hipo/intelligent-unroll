@@ -152,7 +152,7 @@ StateMent * formulation_state(
         const std::map<std::string, Varience *> &name_varP_varPV_map,
         StateMent * state ) {
     FormulationPass formulation_pass( name_varP_varVP_map,name_varP_varPV_map );
-    LOG(INFO) << state;
+
     StateMent * form_state =  formulation_pass.pass(state);
 
     return form_state;

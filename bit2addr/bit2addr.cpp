@@ -1,4 +1,5 @@
-#include "bit2addr.h"    
+#include "bit2addr.h"   
+#include "log.h"
     int Bit2Addr::get_max_len( const int mask ) {
         int len = 1;
         for( int i = 0 ; i < vector_ ; ) {
@@ -31,6 +32,7 @@
                 stream << std::dec << (int)addr[i * para.vector_ + j] << " ";
             stream<<std::endl;
         }
+        return stream;
     }
 
     TransAddr Bit2Addr::generate( int mask ) {
@@ -74,18 +76,21 @@
             int ii = 0;
 
             CompressAddr compress_addr;
+
+            MASK compress_mem_mask = 0;
             for( int i = 0; i < VECTOR ; i++ ) {
                 if(( (1<<i) & circle_mask ) != 0) {
                     compress_addr.compress_vec[ii] = i;
+                    compress_mem_mask |= (1<<ii);
                     ii++;
                 }
             }
-            MASK compress_mem_mask = 0xff;
-            compress_mem_mask >>= (VECTOR - ii);
             for( ; ii < VECTOR ; ii++ ) {
                 compress_addr.compress_vec[ii] = VECTOR;
             }
+            LOG(INFO) << compress_mem_mask - 0;
             compress_addr.mask_ = compress_mem_mask;
+            return compress_addr;
     }
 /*#define VECTOR 8
 int main(int argc , char ** argv) {

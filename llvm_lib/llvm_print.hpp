@@ -25,7 +25,7 @@ class LLVMPrint {
     void __PrintElem( llvm::Value * value, const std::string &form ) {
     
         std::vector<llvm::Value *> values;
-        llvm::Value *formatStr = builder_ptr_->CreateGlobalStringPtr("Print %d\n");
+        llvm::Value *formatStr = builder_ptr_->CreateGlobalStringPtr(form);
         values.push_back( formatStr );
         values.push_back(value);
         builder_ptr_->CreateCall( func_print_,values );
@@ -33,6 +33,10 @@ class LLVMPrint {
     }
     void PrintInt( llvm::Value * value ) {
         __PrintElem( value , "Print %d\n" );
+    }
+    void PrintDouble( llvm::Value * value ) {
+    
+        __PrintElem( value , "Print %lf\n");
     }
 
     void PrintInt64( llvm::Value * value ) {
@@ -74,6 +78,7 @@ class LLVMPrint {
 #define LLVMPrintInt(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintInt(data)
 #define LLVMPrintInt64(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintInt64(data)
 
+#define LLVMPrintDOUBLE(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintDouble(data)
 
 #define LLVMPrintPtr(mod,ctx,build,ptr,lanes)  LLVMPrint( mod,ctx,build).PrintPtr(ptr,lanes)
 

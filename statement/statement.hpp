@@ -69,6 +69,7 @@ class Varience :public StateMent{
     }
     Varience(const Type &type, std::string & name, bool is_const = true ) {
         type_ = type;
+        node_name_ = name;
         name_ = get_unique_name() + "_" + name;
         is_const_ = is_const;
     }
@@ -139,6 +140,17 @@ class FuncStatement : public StateMent {
     virtual std::string get_class_name() {
         return class_name_;
     }
+    FuncStatement( const Type &ret_type, const std::vector<Type> &args_type, const std::vector<std::string> & args_name ) {
+        ret_ = new Varience(ret_type);
+        args_ = new std::vector<Varience*>();
+        func_name_ = "function" ;
+        const int args_len = args_type.size();
+        args_->resize( args_len,nullptr );
+        for(int i = 0 ; i < args_len ; i++) {
+            (*args_)[i] = new Varience(args_type[i]); 
+        }
+    }
+
     FuncStatement( const Type &ret_type, const std::vector<Type> &args_type) {
         ret_ = new Varience(ret_type);
         args_ = new std::vector<Varience*>();
@@ -325,13 +337,14 @@ class Const : public Expr{
             type_ = __bool;
         } else if( typeid(uint64_t) == typeid(T) ){
             type_ = __int64;
-        } {
-            LOG(FATAL) << "Unsupport Type";
+        } else if( typeid(float) == typeid(T) ){
+            type_ = __float;
+        } else if( typeid(char) == typeid(T) ) {
+            type_ = __int8;
+        } else {
+            LOG(FATAL) << "Unsupport Type"  ;
         }
-
-        type_ = Type(INT,NOT_VEC);
-        int * ptr = (int*)malloc(sizeof(int));
-
+        T * ptr = (T*)malloc(sizeof(T));
         ptr[0] = data;
         data_ = reinterpret_cast<void*>(ptr);
     }
@@ -360,9 +373,15 @@ class Const : public Expr{
     void print_data(class_name* tmp_d, int lanes, std::stringstream &ss ) {
         int i;
         for( i = 0; i < lanes - 1; i++  ) {
-            ss << tmp_d[i] << ","; 
+            if(typeid(class_name)==typeid( int8_t ))
+                ss << (int)tmp_d[i] << ","; 
+            else
+                ss << tmp_d[i] << ","; 
         }
-        ss << tmp_d[i];
+        if(typeid(class_name)==typeid( int8_t ))
+                ss << (int)tmp_d[i] ; 
+        else
+                ss << tmp_d[i] ; 
     }
     std::string get_data_str() {
         std::stringstream ss;
@@ -379,7 +398,14 @@ class Const : public Expr{
             case BOOL:
                 print_data( reinterpret_cast<bool*>(data_),lanes,ss);
                 break;
+            case INT64:
+                print_data( reinterpret_cast<int64_t*>(data_),lanes,ss);
+                break;
+            case INT8:
+                print_data( reinterpret_cast<int8_t*>(data_),lanes,ss);
+                break;
             default:
+                LOG(FATAL) << "Unsupported";
                 break;
         }
         return ss.str();
@@ -423,6 +449,8 @@ class LetStat:public StateMent{
     protected:
     LetStat(Varience * res, StateMent * expr) : res_(res),expr_(expr) {
             node_name_ = expr->node_name_;
+            index_name_ = expr->index_name_;
+            addr_name_ = expr->addr_name_;
         }
     public:
 
@@ -430,7 +458,7 @@ class LetStat:public StateMent{
     static StateMent * make(Varience * res,StateMent * expr) {
         const Type & res_type = res->get_type();
         const Type & expr_type = expr->get_type();
-        CHECK( res_type == expr_type ) << class_name_ <<": " <<res_type << " <-> " << expr_type << "does not match\n" <<
+        CHECK( res_type == expr_type ) << class_name_ <<": " <<res_type<< " "<< res->get_name() << " <-> " << expr_type << "does not match\n" <<
             expr->get_class_name();
         StateMent * stat_ptr = new LetStat(res,expr);
         return stat_ptr;
@@ -484,6 +512,9 @@ class Scatter: public StateMent{
     protected:
         Scatter( StateMent * addr,StateMent * index,StateMent * data ,StateMent * mask): addr_(addr),index_(index),data_(data),mask_(mask) {
             node_name_ = addr->node_name_;
+            addr_name_ = node_name_;
+            index_name_ = index->addr_name_;
+
         }
     public:
 
@@ -524,6 +555,8 @@ class Gather: public Expr{
             Type * type_ptr_tmp = &addr->get_type();
 
             node_name_ = addr->node_name_;
+            addr_name_ = node_name_;
+            index_name_ = index->addr_name_;
             
             type_ = *type_ptr_tmp->get_pointer2type();
             type_.set_lanes(type_ptr_tmp->get_lanes());
@@ -564,6 +597,9 @@ class Load : public Expr {
     Load( StateMent * addr,bool is_alined):addr_(addr),is_alined_(is_alined) {
             has_mask_ = false;
             node_name_ = addr->node_name_;
+            addr_name_ = node_name_;
+            index_name_ = "";
+            mask_ = NULL;
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
@@ -571,6 +607,8 @@ class Load : public Expr {
     Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask),is_alined_(is_alined) {
             has_mask_ = true;
             node_name_ = addr->node_name_;
+            addr_name_ = node_name_;
+            index_name_ = "";
             Type * type_ptr_tmp = &addr->get_type();
             CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
             type_ = Type( *type_ptr_tmp->get_pointer2type());
@@ -684,12 +722,17 @@ class Store :public StateMent {
     protected:
     Store( StateMent * addr, StateMent * data ,bool is_alined) : addr_(addr),data_(data),is_alined_(is_alined),has_mask_(false){
         node_name_ = addr->node_name_;
+        addr_name_ = node_name_;
+        index_name_ = "";
         type_ = data->get_type();
+        mask_ =NULL;
     }
 
     Store( StateMent * addr, StateMent * data ,StateMent * mask,bool is_alined) : addr_(addr),data_(data),mask_(mask),is_alined_(is_alined),has_mask_(true){
         
         node_name_ = addr->node_name_;
+        addr_name_ = node_name_;
+        index_name_ = "";
         type_ = data->get_type();
     }
 
@@ -923,6 +966,8 @@ class Binary : public Expr {
 
     Binary( StateMent * v1,StateMent * v2 ) : v1_(v1),v2_(v2) {
         type_ = v1->get_type();
+        node_name_ = v1->index_name_;
+
     }
     public:
 

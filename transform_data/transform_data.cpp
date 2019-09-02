@@ -1,4 +1,5 @@
 #include "transform_data.hpp"
+#include "util.h"
 class TransformData {
     //data need to be transform
     const std::map<std::string, Type > & name_type_map_;
@@ -6,10 +7,13 @@ class TransformData {
     const std::set<std::string > & gather_set_;
     const std::set<std::string> & scatter_set_;
     const std::set<std::string> & reduction_set_;
+
+    const std::set<std::string> & load_set_;
     const std::map<std::string,GatherInfo*> &gather_map_;
     const std::map<std::string,ScatterInfo*> &scatter_map_;
     const std::map<std::string,ReductionInfo*> &reduction_map_;
 
+    int table_column_num_;
     ////output
     std::map<std::string,int*> & gather_name_new_ptr_map_;
     std::map<std::string,int*> & reduction_name_new_ptr_map_;
@@ -21,7 +25,6 @@ class TransformData {
     const std::unordered_map<size_t,std::vector<int>> &same_feature_map_;
     const std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map_;
         ///
-    int vec_num_;
     #define RA_ARRAGE_ELEM( TYPE ) \
     int rearrange_elem(const int index, TYPE * data_ptr,int i, TYPE * new_data_ptr) { \
         int inner_i ;\
@@ -32,7 +35,7 @@ class TransformData {
         return i; \
     } \
     TYPE * malloc_new_data( TYPE * data_ptr ) { \
-        TYPE * new_data_ptr = ( TYPE* )malloc(sizeof( TYPE ) * vec_num_ * VECTOR);\
+        TYPE * new_data_ptr = ( TYPE* )malloc(sizeof( TYPE ) * table_column_num_ * VECTOR);\
         return new_data_ptr;\
     }
 
@@ -56,7 +59,7 @@ class TransformData {
     int * malloc_new_data( ReductionInfo * data_ptr ) {
         int disorder_gather_num = 0;
         int need_data_num = 0;
-        for( int i = 0 ; i < vec_num_ ; i++ ) {
+        for( int i = 0 ; i < table_column_num_ ; i++ ) {
             if( data_ptr[i].order_type_ == DisOrder ) {
                 disorder_gather_num++;
                 const int mask = data_ptr[i].get_mask();
@@ -72,7 +75,8 @@ class TransformData {
     }
     int * malloc_new_data( GatherInfo * data_ptr ) {
         int need_data_num = 0;
-        for( int i = 0 ; i < vec_num_ ; i++ ) {
+        for( int i = 0 ; i < table_column_num_ ; i++ ) {
+            
             if( data_ptr[i].order_type_ == DisOrder ) {
                 const int mask = data_ptr[i].get_mask();
                 need_data_num += mask;
@@ -80,8 +84,10 @@ class TransformData {
                     need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
             } else if( data_ptr[i].order_type_ == IncContinue ){
                 need_data_num ++; 
+            } else if( data_ptr[i].order_type_ == OrderEquel ){
+                need_data_num++; 
             } else {
-                LOG(FATAL) << "Unsupported";
+                LOG(FATAL) << "Unsupported" << data_ptr[i].order_type_;
             }
         } 
         int * new_data_ptr = NULL;
@@ -90,18 +96,22 @@ class TransformData {
         return new_data_ptr;
     }
     int rearrange_elem(const int index, GatherInfo * data_ptr,int i,int * new_data_ptr) {
+                LOG(INFO) <<index;
                 const GatherInfo & gather_info_tmp = data_ptr[ index ];
+                LOG(INFO) << gather_info_tmp;
                 if( gather_info_tmp.order_type_ == DisOrder ) {
+                    for( int mask_i = 0 ; mask_i < gather_info_tmp.get_mask() ; mask_i++,i++) { 
+                        new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
+                    }
                     if( gather_info_tmp.get_mask() != VECTOR ) {
                         for( int disorder_i = 0 ; disorder_i < (VECTOR >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = gather_info_tmp.disorder_addr_.int_data_vec_[disorder_i];
                             i++;
                         }
                     }
-                    for( int mask_i = 0 ; mask_i < gather_info_tmp.get_mask() ; mask_i++,i++) { 
-                        new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
-                    }
-                } else if( gather_info_tmp.order_type_ == IncContinue ) {
+
+                } else if( gather_info_tmp.order_type_ == IncContinue || gather_info_tmp.order_type_ == OrderEquel ) {
+                    LOG(INFO)<< "here" <<index<<" " <<gather_info_tmp.data_index_[0];
                     new_data_ptr[i] = gather_info_tmp.data_index_[0];
                     i++;
                 } else {
@@ -117,6 +127,7 @@ public:
     const std::set<std::string > & gather_set,
     const std::set<std::string> & scatter_set,
     const std::set<std::string> & reduction_set,
+    const std::set<std::string> & load_set,
     const std::map<std::string,GatherInfo*> &gather_map,
     const std::map<std::string,ScatterInfo*> &scatter_map,
     const std::map<std::string,ReductionInfo*> &reduction_map,
@@ -126,13 +137,15 @@ public:
     std::map<std::string,int*> & gather_name_new_ptr_map,
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
-    std::map<std::string,void*> & name_new_ptr_map
+    std::map<std::string,void*> & name_new_ptr_map,
+    int table_column_num
             ) : 
         name_type_map_(name_type_map),
         name_ptr_map_(name_ptr_map),
         gather_set_( gather_set ),
         scatter_set_(scatter_set),
         reduction_set_(reduction_set),
+        load_set_(load_set),
         gather_map_(gather_map),
         scatter_map_(scatter_map),
         reduction_map_(reduction_map),
@@ -141,7 +154,8 @@ public:
         scatter_name_new_ptr_map_(scatter_name_new_ptr_map),
         name_new_ptr_map_(name_new_ptr_map),
         same_feature_map_(same_feature_map),
-        same_feature_range_map_(same_feature_range_map)
+        same_feature_range_map_(same_feature_range_map),
+        table_column_num_(table_column_num)
     {
     }
 
@@ -153,7 +167,7 @@ public:
         for( const auto & same_feature_it : same_feature_map_ ) {
             const std::vector<int> & vec_tmp = same_feature_it.second;
             for( auto index : vec_tmp ) {
-                
+                 
                 i = rearrange_elem( index, data_ptr, i, new_data_ptr) ;
             }
         }
@@ -174,15 +188,16 @@ public:
     
     //
     void rearrange_all() {
-        for( const auto & addr_it : name_ptr_map_  ) {
-            const std::string data_name = addr_it.first;
-            void * addr = addr_it.second;
-
-            auto type_it = name_type_map_.find( data_name );
-            if( type_it == name_type_map_.end() ) {
+        for( const auto & data_name : load_set_) {
+            const auto & name_type_it = name_type_map_.find(data_name);
+            CHECK(name_type_it != name_type_map_.end());
+            const auto & name_ptr_map_it = name_ptr_map_.find( data_name );
+            if( name_ptr_map_it == name_ptr_map_.end() ) {
                 LOG(FATAL) << "can not find the type of "<< data_name;
             }
-            Type var_type = type_it->second;
+            const Type var_type = name_type_it->second;
+            const void * addr = name_ptr_map_it->second;
+
             void * data_new;
             if(var_type == __float_ptr) {
                 float * data_new_float = rearrange<float,float>( (float*)addr );
@@ -190,7 +205,6 @@ public:
             } else if(var_type == __double_ptr){
                 
                 double * data_new_double = rearrange<double,double>( (double*)addr );
-
                 data_new = (void*)data_new_double;
             } else if(var_type == __int_ptr) { 
                 int * data_new_int = rearrange<int,int>( (int*)addr );
@@ -201,6 +215,7 @@ public:
             }
             name_new_ptr_map_[ data_name ] = data_new;
         }
+
             for( auto scatter_index : scatter_set_ ) {
                 auto scatter_info_it = scatter_map_.find( scatter_index );
                 CHECK(scatter_info_it != scatter_map_.end()) << "Can not find "<<scatter_index;
@@ -215,6 +230,7 @@ public:
                 }
             }
             for( auto gather_index : gather_set_ ) {
+
                 auto gather_info_it = gather_map_.find( gather_index );
                 CHECK(gather_info_it != gather_map_.end()) << "Can not find "<<gather_index;
                 int * rearrange_gather_data = rearrange<int,GatherInfo>( gather_info_it->second );
@@ -229,6 +245,7 @@ void transform_data(
     const std::set<std::string > & gather_set,
     const std::set<std::string> & scatter_set,
     const std::set<std::string> & reduction_set,
+    const std::set<std::string> & load_set,
     const std::map<std::string,GatherInfo*> &gather_map,
     const std::map<std::string,ScatterInfo*> &scatter_map,
     const std::map<std::string,ReductionInfo*> &reduction_map,
@@ -237,7 +254,8 @@ void transform_data(
     std::map<std::string,int*> & gather_name_new_ptr_map,
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
-    std::map<std::string,void*> & name_new_ptr_map
+    std::map<std::string,void*> & name_new_ptr_map,
+    int table_column_num
         ) {
     TransformData transform_data( 
             name_type_map,
@@ -245,6 +263,7 @@ void transform_data(
             gather_set,
             scatter_set,
             reduction_set,
+            load_set,
             gather_map,
             scatter_map,
             reduction_map,
@@ -253,7 +272,8 @@ void transform_data(
             gather_name_new_ptr_map,
             reduction_name_new_ptr_map,
             scatter_name_new_ptr_map,
-            name_new_ptr_map
+            name_new_ptr_map,
+            table_column_num
             );
     transform_data.rearrange_all();
 }

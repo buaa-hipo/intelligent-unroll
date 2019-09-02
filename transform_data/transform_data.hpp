@@ -18,6 +18,7 @@ void transform_data(
     const std::set<std::string > & gather_set,
     const std::set<std::string> & scatter_set,
     const std::set<std::string> & reduction_set,
+    const std::set<std::string> & load_set,
     const std::map<std::string,GatherInfo*> &gather_map,
     const std::map<std::string,ScatterInfo*> &scatter_map,
     const std::map<std::string,ReductionInfo*> &reduction_map,
@@ -26,6 +27,7 @@ void transform_data(
     std::map<std::string,int*> & gather_name_new_ptr_map,
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
-    std::map<std::string,void*> & name_new_ptr_map
+    std::map<std::string,void*> & name_new_ptr_map,
+    int table_column_num
         ) ;
 #endif

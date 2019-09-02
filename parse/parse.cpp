@@ -8,31 +8,63 @@
 ////
 //example : lambda i : y[ row[i] ] += x[column[i]] * data[i]
 //
+    std::ostream& operator<< ( std::ostream & stream, const Token& token  )  {
+        std::string token_type_str[] = {
+            "Input",
+            "Output",
+            "Float",
+            "Double",
+            "Int",
+            "FloatPtr",
+            "DoublePtr",
+            "IntPtr",
+            "Var",
+            "Lambda",
+            "LeftBracket",
+            "RightBracket",
+            "Colon",
+            "Mult",
+            "Add",
+            "MultEquel",
+            "Equel",
+            "AddEquel",
+            "Div",
+            "End",
+            "Comma"
+        }; 
+
+        stream << token_type_str[token.token_type_];
+        stream << " " << token.token_name_;
+        return stream;
+    }
+
+
 class ParseClass{
     private:
-    std::map<std::string, Type> var_map_;
 
     std::vector<std::string> scatter_impermulate_var_set_;
     Type output_var_type_;
     Token current_token_;
-    public:
     //output
     Node * &root_node_ptr_;
     std::set<std::string> &gather_set_;
     std::set<std::string> &scatter_set_;
     std::set<std::string> &reduction_set_;
+    std::set<std::string> &load_set_;
     std::map<std::string, Type> &name_type_map_;
     
-    std::vector<std::string> input_name_vec_;
+    std::vector<std::string> &input_name_vec_;
 
-    std::set<std::string> iterates_set_;
+    std::set<std::string> &iterates_set_;
 
     std::string & output_name_;
+    public:
     ParseClass(
         Node * &root_node_ptr,
         std::set<std::string> &gather_set,
         std::set<std::string> &scatter_set,
         std::set<std::string> &reduction_set,
+        std::set<std::string> &load_set,
         std::map<std::string, Type> &name_type_map,
         std::vector<std::string> & input_name_vec,
         std::set<std::string> & iterates_set,
@@ -42,6 +74,7 @@ class ParseClass{
         gather_set_(gather_set),
         scatter_set_(scatter_set),
         reduction_set_(reduction_set),
+        load_set_(load_set),
         name_type_map_(name_type_map),
         input_name_vec_(input_name_vec),
         iterates_set_(iterates_set),
@@ -49,23 +82,23 @@ class ParseClass{
     {
 
     }
-    
+    private:
 
     const std::vector<std::string> & get_input_name_vec() {
         return input_name_vec_;
     }
     Type get_var_type( const std::string & var_name ) {
-        auto  it = var_map_.find( var_name );
-        if( it == var_map_.end() ) {
+        auto  it = name_type_map_.find( var_name );
+        if( it == name_type_map_.end() ) {
             LOG(FATAL) << "Can not find " << var_name;
         }
         return it->second;
     }
 
 Token get_next_token(const std::string &expr) {
-    int static index = 0;
+    static int index = 0;
     Token token;
-    for( ; index < expr.size() && expr[index] == ' ';  index++ ) ;
+    for( ; index < expr.size() && (expr[index] == ' ' || expr[index]=='\n');  index++ ) ;
 
     token.token_type_ = End;
 
@@ -83,16 +116,16 @@ Token get_next_token(const std::string &expr) {
                  expr[index] == '_');
         if( token_name == "lambda" ) {
             token.token_type_ = Lambda;
-        } else if(token_name == "Input") {
+        } else if(token_name == "input") {
             token.token_type_ = Input;
-        } else if(token_name == "Output") {
+        } else if(token_name == "output") {
             token.token_type_ = Output;
         } else if(token_name == "float") {
             token.token_type_ = Float;
         } else if(token_name == "double") {
             
             token.token_type_ = Double;
-        } else if(token_name == "Int") {
+        } else if(token_name == "int") {
             
             token.token_type_ = Int;
         } else {
@@ -106,7 +139,7 @@ Token get_next_token(const std::string &expr) {
         index++;
         if(expr[index] == '=') {
             index++;
-            token.token_type_ = AddEqual;
+            token.token_type_ = AddEquel;
         } else {
             token.token_type_ = Add;
         }
@@ -114,7 +147,7 @@ Token get_next_token(const std::string &expr) {
          index++;
         if(expr[index] == '=') {
             index++;
-            token.token_type_ = MultEqual;
+            token.token_type_ = MultEquel;
         } else {
             token.token_type_ = Mult;
         }
@@ -174,6 +207,7 @@ void ParseOutput(const std::string & expr ) {
         if(current_token_.token_type_ == Var) {
             output_name_ = current_token_.token_name_;
             output_var_type_ = var_type;
+            name_type_map_[ output_name_ ] = var_type;
         } else {
             LOG(FATAL) << "input miss a varience"; 
         }
@@ -199,7 +233,7 @@ void ParseInput(const std::string & expr ) {
 
     current_token_ = get_next_token( expr);
     if(current_token_.token_type_ != Colon) {
-        LOG(FATAL) << "Input misses a colon"; 
+        LOG(FATAL) << "Input misses a colon" << current_token_; 
     }
     do{ 
         current_token_ = get_next_token( expr);
@@ -207,32 +241,32 @@ void ParseInput(const std::string & expr ) {
         current_token_ = get_next_token( expr);
         bool is_pointer = false;
         if( current_token_.token_type_ == Mult ) {
-            is_pointer = true; 
+            is_pointer = true;
+            current_token_ = get_next_token( expr);
         }
         Type var_type;
         if(current_token_type == Float) {
             if(is_pointer)
-                var_type = __float;
-            else
                 var_type = __float_ptr;
+            else
+                var_type = __float;
         } else if(current_token_type == Double) {
             if(is_pointer)
-                var_type = __double;
-            else
                 var_type = __double_ptr;
+            else
+                var_type = __double;
         } else if(current_token_type == Int) {
             if(is_pointer)
-                var_type = __int;
-            else
                 var_type = __int_ptr;
+            else
+                var_type = __int;
         } else {
         
             LOG(FATAL) << "input miss a type"; 
         }
-        if(is_pointer) current_token_ = get_next_token( expr);
 
         if(current_token_.token_type_ == Var) {
-            var_map_[ current_token_.token_name_ ] = var_type;
+            name_type_map_[ current_token_.token_name_ ] = var_type;
             input_name_vec_.push_back(current_token_.token_name_);
         } else {
             LOG(FATAL) << "input miss a varience"; 
@@ -249,9 +283,9 @@ Node* ParseInputExpr(const std::string & expr) {
     Node * left_node_ptr = NULL;
     if(current_token_.token_type_ == Var) {
         std::string left_node_name = current_token_.token_name_;
-        auto var_type_it = var_map_.find( left_node_name );
+        auto var_type_it = name_type_map_.find( left_node_name );
         Type var_type;
-        if(var_type_it == var_map_.end()) {
+        if(var_type_it == name_type_map_.end()) {
             auto var_type_set_it = iterates_set_.find( left_node_name );
             if(var_type_set_it == iterates_set_.end()) {
                 LOG(FATAL) << left_node_name<<" not defined";
@@ -261,8 +295,8 @@ Node* ParseInputExpr(const std::string & expr) {
         } else { 
             var_type = var_type_it->second;
         }
+        left_node_ptr = new VarNode(var_type, left_node_name  );
         
-
         current_token_ = get_next_token( expr);
         if( current_token_.token_type_ == LeftBracket ) { 
             Node * left_node_index_ptr = ParseInputExpr( expr ); 
@@ -275,24 +309,24 @@ Node* ParseInputExpr(const std::string & expr) {
                 left_node_ptr = new GatherNode( left_node_ptr,  left_node_index_ptr );
                 left_node_ptr->addr_name_ = left_node_name;
                 left_node_ptr->index_name_ = left_node_index_ptr->addr_name_;
+
+                left_node_ptr->node_name_ = left_node_ptr->index_name_;
                 gather_set_.insert( left_node_ptr->index_name_ );
+                load_set_.erase( left_node_ptr->index_name_ );
+            } else if( dynamic_cast<VarNode*>(left_node_index_ptr) != NULL && iterates_set_.find(left_node_index_ptr->node_name_) != iterates_set_.end() ){
 
-                name_type_map_.erase(left_node_ptr->index_name_);
-
-            } else if( dynamic_cast<VarNode*>(left_node_index_ptr) != NULL && iterates_set_.find(left_node_index_ptr->node_name_) != iterates_set_.end() ){ 
                 left_node_ptr = new LoadNode( left_node_ptr );
+                 
                 left_node_ptr->index_name_ = left_node_index_ptr->node_name_;
                 left_node_ptr->addr_name_ = left_node_name;
 
-                name_type_map_[left_node_name] = get_var_type( left_node_name ) ;
-
+                left_node_ptr->node_name_ = left_node_ptr->index_name_;
+                load_set_.insert(left_node_name);
 
             } else {
                 LOG(FATAL) << "unsupported";
             }
-        } else {
-            left_node_ptr = new VarNode( var_type, left_node_name ); 
-        }
+        } 
     } else {
         LOG(FATAL) << "the input expression misses a varience";
     }
@@ -300,7 +334,7 @@ Node* ParseInputExpr(const std::string & expr) {
     Node * right_node_ptr = NULL;
     if(current_token_type == Add ||
        current_token_type == Mult ||
-       current_token_type == Div) {    
+       current_token_type == Div) {
        right_node_ptr = ParseInputExpr( expr );
     }
     Node * res_node_ptr;
@@ -313,6 +347,7 @@ Node* ParseInputExpr(const std::string & expr) {
     } else {
         res_node_ptr = left_node_ptr; 
     }
+    CHECK(res_node_ptr!=NULL) << "Wrong";
     return res_node_ptr;
 }
 void ParseExpr(const std::string & expr) {
@@ -330,10 +365,7 @@ void ParseExpr(const std::string & expr) {
     if( current_token_.token_type_ ==  LeftBracket) {
         has_bracket = true;
         index_node_ptr = ParseInputExpr(expr);
-        if( dynamic_cast<LoadNode*>(index_node_ptr) ||
-            dynamic_cast<GatherNode*>(index_node_ptr) ) {
-             
-        }
+
         if(current_token_.token_type_ != RightBracket) {
             LOG(FATAL) << "Output miss a right bracked";
         } else {
@@ -342,47 +374,48 @@ void ParseExpr(const std::string & expr) {
         }
     }
     TokenType equal_type = current_token_.token_type_;
-    if( equal_type != AddEqual &&
-        equal_type != Equal &&
-        equal_type != MultEqual) {
+    if( equal_type != AddEquel &&
+        equal_type != Equel &&
+        equal_type != MultEquel) {
         LOG(FATAL) << "equal type is fatal"; 
     }
 
     Node * data_ptr = ParseInputExpr( expr );
     if(has_bracket) {
     if( dynamic_cast<LoadNode*>(index_node_ptr) != NULL ) {
-        if( equal_type == AddEqual ) {
-                
+        if( equal_type == AddEquel ) {
             Node * gather_node_ptr = new GatherNode( addr_ptr, index_node_ptr);
             gather_node_ptr->index_name_ = index_node_ptr->addr_name_;
-
+            gather_node_ptr->node_name_ = gather_node_ptr->index_name_;
             gather_node_ptr->addr_name_ = output_name_;
             data_ptr = new AddNode( gather_node_ptr, data_ptr );
+            data_ptr->node_name_ = gather_node_ptr->addr_name_;
+
+            data_ptr->index_name_ = gather_node_ptr->index_name_;
             
-            data_ptr->node_name_ = gather_node_ptr->index_name_;
-            
+            LOG(INFO)  << data_ptr->node_name_; 
             reduction_set_.insert( gather_node_ptr->index_name_ );
 
-        } else if(equal_type == MultEqual) {
+        } else if(equal_type == MultEquel) {
             LOG(FATAL)  << "Unsupported";
-        } 
+        }
         root_node_ptr_ = new ScatterNode( addr_ptr, index_node_ptr, data_ptr );
+
         root_node_ptr_->index_name_ = index_node_ptr->addr_name_;
 
         root_node_ptr_->addr_name_ = output_name_;
 
         scatter_set_.insert( root_node_ptr_->index_name_ );
-
+        load_set_.erase( root_node_ptr_->index_name_ );
     } else if(dynamic_cast<VarNode*>(index_node_ptr)!= NULL) {
-        if( equal_type == AddEqual ) {
-                
+        if( equal_type == AddEquel ) {
             LoadNode * load_node_ptr = new LoadNode( addr_ptr);
             load_node_ptr->index_name_ = index_node_ptr->node_name_;
             load_node_ptr->addr_name_ = output_name_;
             data_ptr = new AddNode( load_node_ptr, data_ptr );
             data_ptr->node_name_ = load_node_ptr->index_name_;
 
-        } else if(equal_type == MultEqual) {
+        } else if(equal_type == MultEquel) {
             LOG(FATAL)  << "Unsupported";
         } 
 
@@ -398,14 +431,18 @@ void ParseExpr(const std::string & expr) {
         LOG(FATAL) << "unsupported";
     }
 }
+public:
 void Parse(const std::string & expr ) {
 
-    Token token = get_next_token( expr);
+    current_token_ = get_next_token( expr);
     bool end_circle = false;
     do{
-        switch(token.token_type_) {
+        switch(current_token_.token_type_) {
             case Output:
                 ParseOutput( expr );
+                break;
+            case Input:
+                ParseInput( expr );
                 break;
             case Lambda:
                 ParseLambda(expr);
@@ -416,7 +453,7 @@ void Parse(const std::string & expr ) {
                 end_circle = true; 
                 break;
             default:
-                LOG(FATAL) << "Type Wrong";
+                LOG(FATAL) << "Type Wrong" << current_token_;
                 break;
         }
     }  while(!end_circle);   
@@ -428,21 +465,25 @@ void parse_expression(
         std::set<std::string> &gather_set,
         std::set<std::string> &scatter_set,
         std::set<std::string> &reduction_set,
+        std::set<std::string> &load_set,
         std::map<std::string, Type >  &name_type_map,
         std::vector<std::string> & input_name_vec,
         std::set<std::string> & iterates_set,
         std::string & output_name
         ) {
-        ParseClass( \ 
+
+        ParseClass parse_class = ParseClass( \ 
                 root_node_ptr, \
                 gather_set, \
                 scatter_set,\
                 reduction_set,\
+                load_set,\
                 name_type_map,\
                 input_name_vec,\
                 iterates_set,\
                 output_name\
-                ).Parse( expr_str );
+                );
+        parse_class.Parse( expr_str );
 }
 
 

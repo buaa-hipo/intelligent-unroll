@@ -108,6 +108,8 @@ class LLVMCodeGen {
 
     llvm::Constant * CONST_INDEX_NUM_[VECTOR];
     llvm::Constant *True_;
+
+    llvm::Constant * true_vec_value_ ;
     llvm::Constant * Null_;
     llvm::Constant * ZeroVec_;
     llvm::Constant * FFFF_;

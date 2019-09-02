@@ -14,7 +14,8 @@
 #include "tools_set.hpp"
 #include "tools_set.hpp"
 #include "statement.hpp"
-void node_tree2state( 
+void node_tree2state(
+        const std::string & output_name,
         const std::vector<std::string> &input_var_vec,
         const std::set<std::string> &iterates_set,
         const std::map<std::string, Type > & name_type_map,
@@ -32,6 +33,6 @@ void node_tree2state(
         std::vector<StateMent *> &func_init_state_vec,
         StateMent * & calculate_state,
         FuncStatement * &func_state_ptr,
-        const Node * node_ptr
+         Node * node_ptr
         ) ;
 #endif

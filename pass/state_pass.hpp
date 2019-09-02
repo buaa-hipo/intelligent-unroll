@@ -6,6 +6,10 @@
 #include <iostream>
 class StateMentPass{
     protected:
+
+    StateMent * nop_;
+    using FType = ir_func<StateMent*(StateMent*)>; 
+    FType  * ftype_ptr = nullptr;
 virtual    StateMent* pass_(StateMent * stat ) ;
 virtual    StateMent* pass_(Block * stat ) ;
 virtual    StateMent* pass_(For * stat ) ;
@@ -34,7 +38,11 @@ virtual    StateMent* pass_(ComplexReduce * stat  ) ;
 virtual    StateMent* pass_( ExtractElement * stat);
 virtual    StateMent* pass_( InsertElement * stat) ;
 public:
+    StateMentPass() {
+        ftype_ptr = nullptr;
 
+        nop_ = Nop::make();
+    }
     StateMent* pass(StateMent * stat ) ;
 };
 #endif

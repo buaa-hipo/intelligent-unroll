@@ -162,6 +162,7 @@ LLVMCodeGen::LLVMCodeGen() {
         One_ = llvm::ConstantInt::get( t_int_ , 1);
         //FOne_ = llvm::ConstantFP::get( t_double_ , 1);
         True_ = llvm::ConstantInt::get( t_bool_ , 1);
+        true_vec_value_ = llvm::ConstantVector::getSplat(lanes_,True_);
         for( int i = 0 ; i < VECTOR ; i++ ) {
             CONST_INDEX_NUM_[i ] = llvm::ConstantInt::get( t_int_ , i );
         }
@@ -192,6 +193,18 @@ llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
             LLVMPrintInt64( mod_ptr_.get(), ctx_ptr_.get(),build_ptr_.get(), value );
         } else if( type == __int_ptr ) {
             LLVMPrintPtr( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value, 1 );
+        } else if( type == __double ) {
+            LLVMPrintDOUBLE( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value);
+        } else if( type == __double_v ) {
+            for( int i = 0 ; i < VECTOR; i++ ) {
+                llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
+                LLVMPrintDOUBLE( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
+            }
+        } else if( type == __int_v ) {
+            for( int i = 0 ; i < VECTOR; i++ ) {
+                llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
+                LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
+            }
         } else {
             LOG(FATAL) << "Unsupport Type ";
         }
@@ -271,7 +284,7 @@ llvm::Value * LLVMCodeGen::CodeGen_( For * stat ) {
         if(lanes == 1) {
             if(typeid(T)==typeid(double)||typeid(T)==typeid(float) ) {
                 vec = llvm::ConstantFP::get(llvm_type,vec_ptr[0]);
-            } else if( typeid(T)==typeid(int) || typeid(T)==typeid(bool) ) {
+            } else if( typeid(T) == typeid(int8_t) || typeid(T)==typeid(int) || typeid(T)==typeid(bool)||typeid(T) == typeid(int64_t) ) {
                 vec = llvm::ConstantInt::get(llvm_type,vec_ptr[0]);
             } else {
                 LOG(FATAL) << "Unsupported Type";
@@ -282,9 +295,7 @@ llvm::Value * LLVMCodeGen::CodeGen_( For * stat ) {
             llvm::Value * data;
             if(typeid(T)==typeid(double) || typeid(T)==typeid(float) )
                 data = llvm::ConstantFP::get( llvm_type ,vec_ptr[i]);
-            else if( typeid(T) == typeid(int) ) {
-                data = llvm::ConstantInt::get(llvm_type,vec_ptr[i]);
-            } else if( typeid(T)==typeid(bool)) {
+            else if(  typeid(T) == typeid(int8_t) || typeid(T)==typeid(int) || typeid(T)==typeid(bool)||typeid(T) == typeid(int64_t) ) {
                 data = llvm::ConstantInt::get(llvm_type,vec_ptr[i]);
             } else {
                 LOG(FATAL) << "Unsupported Type";
@@ -307,8 +318,12 @@ llvm::Value* LLVMCodeGen::CodeGen_( Const* stat) {
             init_vec<int>(vec,data, lanes,t_int_); 
         } else if( stat_type.get_data_type() == BOOL ){
             init_vec<bool>(vec,data,lanes,t_bool_);
+        } else if(stat_type.get_data_type() == INT64) {
+            init_vec<int64_t>(vec,data,lanes,t_int64_); 
+        } else if( stat_type.get_data_type() == INT8 ){
+
+            init_vec<int8_t>(vec,data,lanes,t_int8_); 
         } else {
-        
             LOG(FATAL) << "does not support";
         }
         return vec;
@@ -381,7 +396,14 @@ llvm::Value * LLVMCodeGen::CodeGen_(Scatter * stat) {
         llvm::Value * addr_value = CodeGen( stat->get_addr());
         llvm::Value * index_value = CodeGen( stat->get_index());
         llvm::Value * data_value = CodeGen(stat->get_data());
-        llvm::Value * mask_value = CodeGen( stat->get_mask() );
+
+        StateMent * mask_state = stat->get_mask();
+        llvm::Value * mask_value;
+        if(mask_state == NULL) {
+            mask_value = true_vec_value_;
+        } else { 
+            mask_value = CodeGen( mask_state );
+        }
         llvm::Value * ptr_value = build_ptr_->CreateInBoundsGEP( addr_value, index_value);
         build_ptr_->CreateMaskedScatter(data_value,ptr_value,alinements_,mask_value);
         return Null_;
@@ -393,8 +415,13 @@ llvm::Value * LLVMCodeGen::CodeGen_(Gather * stat) {
     llvm::Value * index_value = CodeGen( stat->get_index());
 
     llvm::Value * ptr_value = build_ptr_->CreateInBoundsGEP( addr_value, index_value);
-        
-    llvm::Value * mask_value = CodeGen( stat->get_mask() );
+    StateMent * mask_stat = stat->get_mask();
+    llvm::Value * mask_value ;
+    if( mask_stat ) {
+        mask_value = true_vec_value_; 
+    } else {
+        mask_value = CodeGen( stat->get_mask() );
+    }
         if( stat->get_type() == __double_v ) {         
             return  build_ptr_->CreateMaskedGather(  ptr_value , alinements_, mask_value , DZeroVec_);
         } else if( stat->get_type() == __float_v ) {
@@ -416,6 +443,19 @@ llvm::Value * LLVMCodeGen::CodeGen_(Load * stat) {
     if( stat->has_mask() ) {
 
         llvm::Value * mask_value = CodeGen( stat->get_mask());
+        if( !mask_value->getType()->isVectorTy()) {
+            if(VECTOR == VECTOR8) {
+                
+                if( mask_value->getType()->getIntegerBitWidth() != VECTOR8) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int8_, false );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+
+            } else {
+                LOG(FATAL) << "Unsupported";
+            }
+        }
+
         if( stat->get_is_aligned() ) {
             res = build_ptr_->CreateMaskedLoad( addr_value, alinements_, mask_value );
         } else {
@@ -445,6 +485,19 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
     if( stat->has_mask() ) {
 
         llvm::Value * mask_value = CodeGen( stat->get_mask() );
+        if( !mask_value->getType()->isVectorTy()) {
+            if(VECTOR == VECTOR8) {
+                
+                if( mask_value->getType()->getIntegerBitWidth() != VECTOR8) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int8_, (bool)0 );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+
+            } else {
+                LOG(FATAL) << "Unsupported";
+            }
+        }
+
         if( stat->get_is_aligned() ) {
             res = build_ptr_->CreateMaskedStore( data_value,addr_value, alinements_, mask_value );
         } else {
@@ -527,8 +580,9 @@ llvm::Value * LLVMCodeGen::CodeGen_(BitCast * stat) {
         const Type & stat_type = stat->get_type();
         if( (v1_type == __int && (stat_type == __double|| stat_type == __float )) ||( v1_type == __int_v ) && ( stat_type == __double_v || stat_type == __float_v )  ) {
             return build_ptr_->CreateSIToFP(v1_value, llvmtype);
+        } else if( v1_type == __int64 &&( stat_type == __int_ptr || stat_type == __double_ptr || stat_type == __float_ptr ) ){
+            return build_ptr_->CreateIntToPtr( v1_value, llvmtype);
         } else {
-        
             return build_ptr_->CreateBitCast(v1_value, llvmtype);
         }
     }
@@ -721,7 +775,7 @@ llvm::Value * LLVMCodeGen::CodeGen_( DetectConflict * stat) {
 }
 
 llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
-
+        if(stat==NULL) return NULL;
         using FType = ir_func<llvm::Value*(StateMent*)>; 
         static FType * ftype_ptr = nullptr;
         if(ftype_ptr == nullptr) {
@@ -787,6 +841,7 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
 
         llvm::BasicBlock * entry = llvm::BasicBlock::Create(*ctx_ptr_,"entry",function );
         build_ptr_->SetInsertPoint( entry );
+        LOG(INFO) << "Before CodeGen";
         CodeGen( state_ptr);
         build_ptr_->CreateRet(One_);
     	TheFPM->run( *function );

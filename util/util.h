@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include "mm_malloc.h"
 
-//    #define DEBUG
 
 #define SCALAR double
 #define COLUMN_TYPE unsigned short int
@@ -71,7 +70,7 @@ int sum_int( const int * array , const int size );
                                 }                                               \
                                 } while(0)
 
-void print_vector_double(const double * a, const int len);
+void print_vector_double(const double * const a, const int len);
 void print_vector_int(const int * a, const int len) ;
 
 void print_vector_xchar(const unsigned char * a, const int len) ;

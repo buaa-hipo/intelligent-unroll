@@ -100,7 +100,7 @@ int main( int argc , char const * argv[] ) {
     init_vec( y_array_bak, row_num , 0 );
 
     init_vec( y_array_time, row_num , 0 );
-    int * row_ptr_all = SIMPLE_MALLOC( int,column_num );
+    int * row_ptr_all = SIMPLE_MALLOC( int, data_num );
     for(int row_i = 0 ; row_i < row_num; row_i++) {
         int begin = row_ptr[row_i];
         int end = row_ptr[row_i+1];
@@ -109,10 +109,10 @@ int main( int argc , char const * argv[] ) {
         }
     }
     std::string spmv_str = 
-    "input: int * row_ptr, \
+    "input: int * row_ptr,   \
             int * column_ptr,\
             double * x_array,\
-            double * data_ptr \
+            double * data_ptr\
      output:double * y_array \
      lambda i : \
             y_array[ row_ptr[i] ] += data_ptr[i] \
@@ -125,9 +125,9 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "x_array" ] = x_array;
     name2ptr_map[ "data_ptr" ] = data_ptr;
     name2ptr_map[ "y_array" ] = y_array;
-    
-    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,column_num/VECTOR );
-    using FuncType = void(*)( double*,int*,int*,double*,double*);
+    LOG(INFO)     << data_num << " " << VECTOR;
+    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/VECTOR );
+    using FuncType = int(*)( double*,int*,int*,double*,double*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");
         spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
@@ -138,8 +138,8 @@ int main( int argc , char const * argv[] ) {
     
     func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
 #ifndef DEBUG
-     for( int i = 0 ; i < 50 ; i++ )
-        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+//     for( int i = 0 ; i < 50 ; i++ )
+//        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
 #define TIMES 100
 #else
@@ -147,8 +147,8 @@ int main( int argc , char const * argv[] ) {
 
 #endif
     Timer::startTimer("jit");
-     for( int i = 0 ; i < TIMES ; i++ )
-        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+//     for( int i = 0 ; i < TIMES ; i++ )
+//        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);

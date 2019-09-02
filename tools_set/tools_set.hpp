@@ -9,8 +9,10 @@
 #include <ulimit.h>
 #include<climits>
 #include <unordered_map>
+#include <iostream>
+typedef enum{DisOrder = 0, Inc = 1, Dec = 2, IncContinue = 3, DecContinue = 4 , OrderEquel = 5} OrderType;
+std::ostream &  operator << (std::ostream & stream , const OrderType& order_type);
 
-typedef enum{DisOrder = 0, Inc = 1, Dec = 2, IncContinue = 3, DecContinue = 4 ,Equel = 5} OrderType;
 class Info{
     public:
     int mask_;
@@ -34,14 +36,13 @@ class GatherInfo : public Info{
 };
 class ScatterInfo : public GatherInfo{
 };
-
-
-
 class ReductionInfo : public Info {
     public:
     DisorderAddr reduction_addr_[ LOG_VECTOR ];
 };
 
+std::ostream & operator<<( std::ostream &stream , const GatherInfo &scatter_info ) ;
+std::ostream & operator<<( std::ostream &stream , const DisorderAddr & in ) ;
 void generate_information( 
         const std::set<std::string> & scatter_set,
         const std::set<std::string> & reduction_set,

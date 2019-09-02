@@ -4,7 +4,7 @@
             ftype_ptr->set_dispatch<CLASS_NAME>([this](StateMent * __basic_class_ptr)->StateMent*{\
                 CLASS_NAME * __class_name = dynamic_cast<CLASS_NAME*>( __basic_class_ptr );\
                 if(__class_name==NULL){printf("type StateMent" "-> "#CLASS_NAME"failt");exit(1);}\
-                this->pass_(__class_name);})\
+                return this->pass_(__class_name);})\
 
 StateMent* StateMentPass::pass_(StateMent * stat) {
     LOG(FATAL) << "\nthe statement %s does not support\n" << stat->get_class_name() ;
@@ -13,10 +13,12 @@ StateMent* StateMentPass::pass_(StateMent * stat) {
 StateMent* StateMentPass::pass_(Block * stat) {
     std::vector<StateMent* > * state_vec = stat->get_stat_vec();
     std::vector<StateMent* > * new_state_vec = new std::vector<StateMent*>() ;
+
     new_state_vec->resize( state_vec->size() , nullptr);
     bool is_change = false;
     for(int i = 0 ; i < state_vec->size() ; i++) {
         StateMent * new_state = pass((*state_vec)[i]);
+
         if( new_state != (*state_vec)[i] ) {
             is_change = true;
         }
@@ -70,6 +72,7 @@ StateMent* StateMentPass::pass_(LetStat * stat) {
 
     
     StateMent * expr_state_new = pass( expr_state);
+
     if(  expr_state == expr_state_new ){
         return stat;
     } else { 
@@ -145,18 +148,30 @@ StateMent * StateMentPass::pass_(Gather * stat) {
 
 }
 StateMent * StateMentPass::pass_(Load * stat) {
+
     StateMent * addr_state = stat->get_addr();
     bool is_alined = stat->get_is_aligned();
+
     StateMent * mask_state = stat->get_mask();
     //new
     StateMent * addr_state_new = pass(addr_state);
-    StateMent * mask_state_new = pass(mask_state);
+
+    StateMent * mask_state_new;
     
+    if(mask_state != NULL)
+        mask_state_new = pass(mask_state); 
+    else
+        mask_state_new = NULL;
+
     if( addr_state == addr_state_new &&
         mask_state == mask_state_new) {
         return stat;
     } else {
-        return Load::make( addr_state_new, mask_state_new, is_alined );
+        if( mask_state_new == NULL ) {
+            return Load::make( addr_state_new,  is_alined );
+        } else { 
+            return Load::make( addr_state_new, mask_state_new, is_alined );
+        }
     }
 }
 StateMent * StateMentPass::pass_( Print * stat ) {
@@ -223,7 +238,12 @@ StateMent* StateMentPass::pass_(Store * stat ) {
         mask_state == mask_state_new) {
         return stat;
     } else {
-        return Load::make( addr_state_new,  mask_state_new, is_alined );
+        if(mask_state == NULL) {
+            return Store::make( addr_state_new, data_state_new , is_alined );
+        } else {
+        
+            return Store::make( addr_state_new, data_state_new , mask_state_new, is_alined );
+        }
     }
 
 }
@@ -246,7 +266,11 @@ StateMent * StateMentPass::pass_(Shuffle * stat ) {
         index_state == index_state_new ) {
         return stat;
     } else {
-        return Shuffle::make( v1_state_new,v2_state_new,index_state_new );
+        if(v2_state == NULL) {
+            return Shuffle::make(v1_state_new,index_state_new);
+        } else { 
+            return Shuffle::make( v1_state_new,v2_state_new,index_state_new );
+        }
     }
 }
 StateMent * StateMentPass::pass_(ComplexReduce * stat ) {
@@ -321,7 +345,11 @@ StateMent * StateMentPass::pass_(BitCast * stat ) {
             v2_state == v2_state_new) { \
             return stat;\
         } else {\
-            return  CLASSNAME::make(v1_state_new,v2_state_new);\
+            StateMent * ret =  CLASSNAME::make(v1_state_new,v2_state_new);\
+            ret->set_addr_name( stat->addr_name_ );\
+            ret->set_index_name( stat->index_name_ );\
+            ret->set_node_name( stat->node_name_ );\
+            return ret;\
         }\
     }
 
@@ -334,9 +362,8 @@ PASS_BINARY( Mul, "*");
 PASS_BINARY( Minus, "-");
 
 StateMent* StateMentPass::pass(StateMent * stat) {
+    
     if(stat== NULL) return NULL;
-    using FType = ir_func<StateMent*(StateMent*)>; 
-    static FType  * ftype_ptr = nullptr;
     if(ftype_ptr == nullptr) {
         ftype_ptr = new FType();
         SET_DISPATCH( StateMent );
