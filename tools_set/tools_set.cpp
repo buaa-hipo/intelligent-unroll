@@ -26,7 +26,6 @@ std::ostream & operator<<( std::ostream &stream , const GatherInfo &scatter_info
 
     template<typename G_R>
     void generate_info(G_R * &info_ptr, const int * addr, const int vec_num, G_R(*func_ptr)(const int*) ) {
-        LOG(INFO) << vec_num;
         info_ptr = new G_R[ vec_num ];
         for( int i = 0 ; i < vec_num ; i++ ) {
             info_ptr[i] = func_ptr( addr + i * VECTOR );
@@ -137,7 +136,6 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
     ScatterInfo scatter_info;
 
     OrderType order_type = get_order_type( index_ptr );
-    LOG(INFO) << order_type;
     if(order_type == OrderEquel) {
         scatter_info.mask_ = 0x1;
         scatter_info.order_type_ = order_type;
@@ -151,7 +149,6 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
     } else {
         LOG(FATAL) << "Unsupported"; 
     }
-    LOG(INFO)<<scatter_info;
     return scatter_info;
 }
 GatherInfo generate_gather_info_elem(const int * index_ptr) {
@@ -175,7 +172,6 @@ void generate_info( ReductionInfo *&info_ptr ,const int *addr,int len, ScatterIn
         const int vec_num = len ;
         info_ptr = new ReductionInfo[ vec_num ];
         for( int i = 0 ; i < vec_num ; i++ ) {
-            LOG(INFO) << scatter_info_ptr[i];
             info_ptr[i] = generate_reduction_info_elem( addr + i * VECTOR, scatter_info_ptr[i] );
         }
 }
@@ -250,7 +246,6 @@ void combin_same_write_pattern_together_elem( std::vector<std::pair<int,int>> &s
             }
         }
 
-        LOG(INFO) << j << " " << index_vec_size;
         if( write_local == old_write_local ) {
             if( old_write_local_index + 1 != index_vec_size ) {
                 same_write_range.push_back( std::pair<int,int>(old_write_local_index,  index_vec_size ) ); 
@@ -261,7 +256,6 @@ void combin_same_write_pattern_together_elem( std::vector<std::pair<int,int>> &s
         } else {
             LOG(FATAL) << "This condition never happend";
         }
-        LOG(INFO) << j << " " << index_vec_size;
         if( j != index_vec_size) {
             index_vec.erase( index_vec.begin() + j , index_vec.begin() + index_vec_size); 
         } 
@@ -273,10 +267,8 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
     std::vector<size_t> erase_vec;
     for(  auto & it : same_feature_map ) {
           const size_t & feature_hash = it.first;
-          LOG(INFO) << it.second.size();
           combin_same_write_pattern_together_elem( same_write_pattern_map[feature_hash], it.second  , info);
 
-          LOG(INFO) << it.second.size();
           if( same_write_pattern_map[feature_hash].size() == 0 ) {
                 same_write_pattern_map.erase(feature_hash);  
           }
@@ -322,7 +314,6 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
 
             auto name2ptr_map_it = name2ptr_map.find(scatter_index);
 
-            LOG(INFO) << table_column_num;
             generate_info( scatter_info_tmp , (int*)name2ptr_map_it->second , table_column_num );
             scatter_map[ scatter_index ] = scatter_info_tmp;
             ////////////reduction
@@ -352,10 +343,8 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
         }
         
         /////////////////
-        LOG(INFO) << "befor_hash_table" << sizeof(Info);
         size_t * hash_table = get_feature_hash(  gather_map,scatter_map,reduction_map,table_column_num );
         /////////////////combin same feature
-        LOG(INFO) << table_column_num;
         combin_same_feature_together( same_feature_map, hash_table,table_column_num);
         ////combine same write location pattern
         ///assume that the number of scatter or store operation is only one

@@ -841,7 +841,6 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
 
         llvm::BasicBlock * entry = llvm::BasicBlock::Create(*ctx_ptr_,"entry",function );
         build_ptr_->SetInsertPoint( entry );
-        LOG(INFO) << "Before CodeGen";
         CodeGen( state_ptr);
         build_ptr_->CreateRet(One_);
     	TheFPM->run( *function );
