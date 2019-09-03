@@ -88,7 +88,6 @@
             for( ; ii < VECTOR ; ii++ ) {
                 compress_addr.compress_vec[ii] = VECTOR;
             }
-            LOG(INFO) << compress_mem_mask - 0;
             compress_addr.mask_ = compress_mem_mask;
             return compress_addr;
     }

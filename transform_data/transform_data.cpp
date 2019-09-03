@@ -96,9 +96,7 @@ class TransformData {
         return new_data_ptr;
     }
     int rearrange_elem(const int index, GatherInfo * data_ptr,int i,int * new_data_ptr) {
-                LOG(INFO) <<index;
                 const GatherInfo & gather_info_tmp = data_ptr[ index ];
-                LOG(INFO) << gather_info_tmp;
                 if( gather_info_tmp.order_type_ == DisOrder ) {
                     for( int mask_i = 0 ; mask_i < gather_info_tmp.get_mask() ; mask_i++,i++) { 
                         new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
@@ -111,7 +109,6 @@ class TransformData {
                     }
 
                 } else if( gather_info_tmp.order_type_ == IncContinue || gather_info_tmp.order_type_ == OrderEquel ) {
-                    LOG(INFO)<< "here" <<index<<" " <<gather_info_tmp.data_index_[0];
                     new_data_ptr[i] = gather_info_tmp.data_index_[0];
                     i++;
                 } else {

@@ -237,7 +237,6 @@ class Node2StateMent{
                 load_node_it->second->set_addr_name( addr_ptr->node_name_  );
                 load_node_it->second->set_node_name( addr_ptr->node_name_  );
 
-                LOG(INFO) << addr_var->node_name_;
                 seed_state_vec.push_back( LetStat::make( load_node_it->second , Load::make( addr_var ) ) ); 
 
             } else {

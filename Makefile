@@ -1,7 +1,7 @@
 CC=g++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags`  
 INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/
-CFLAGS=-std=c++11 -O3 -ffast-math  -frtti -Wall
+CFLAGS=-std=c++11 -O2 -ffast-math  -frtti -Wall
 INCLUDE_LLVM_DIR=`llvm-config --cxxflags` 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
 LD=g++ 

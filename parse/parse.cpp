@@ -393,7 +393,6 @@ void ParseExpr(const std::string & expr) {
 
             data_ptr->index_name_ = gather_node_ptr->index_name_;
             
-            LOG(INFO)  << data_ptr->node_name_; 
             reduction_set_.insert( gather_node_ptr->index_name_ );
 
         } else if(equal_type == MultEquel) {

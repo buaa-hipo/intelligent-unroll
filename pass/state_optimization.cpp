@@ -158,8 +158,8 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
 
                 Varience * load_data_shuffle = new Varience( stat->get_type() );
                 
-                gather_state_vec.push_back( Print::make( load_data ) );
-                gather_state_vec.push_back( Print::make( permulation_addr ) );
+//                gather_state_vec.push_back( Print::make( load_data ) );
+//                gather_state_vec.push_back( Print::make( permulation_addr ) );
                 gather_state_vec.push_back(Shuffle::make( load_data , permulation_addr) );
                 return CombinStatVec( gather_state_vec );
 
@@ -178,7 +178,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                 const auto & name_varP_varPV_map_it = name_varP_varPV_map_.find(addr_name);
                 CHECK( name_varP_varPV_map_it != name_varP_varPV_map_.end() ) ;
 
-                gather_state_vec.push_back( Print::make( load_index )  );
+//                gather_state_vec.push_back( Print::make( load_index )  );
                 gather_state_vec.push_back( Gather::make( const_cast<Varience*>(name_varP_varPV_map_it->second),load_index ));
                 return CombinStatVec( gather_state_vec );
             } else {
@@ -215,7 +215,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                      
                     load_index = gather_scatter_has_load_info_index_[ index_name ];
                 }
-               gather_state_vec.push_back(Print::make( load_index ));
+               //gather_state_vec.push_back(Print::make( load_index ));
                 const auto & name_var_map_it = name_var_map_.find(addr_name);
                 StateMent * load_state = Load::make(IncAddr::make( name_var_map_it->second, load_index));
                 if(scatter_map_.find( index_name ) == scatter_map_.end() ) {
@@ -243,7 +243,7 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
 
             StateMent * add_new_state;
             std::vector<StateMent *> reduce_state_vec;
-            reduce_state_vec.push_back( Print::make( v2_state_new ) );
+//            reduce_state_vec.push_back( Print::make( v2_state_new ) );
             Varience * shuffle_res = new Varience(v2_state_new->get_type()); 
             add_new_state = LetStat::make( shuffle_res, v2_state_new);
             ReductionInfo reduction_info = (reduction_map_it->second)[index_];
@@ -510,7 +510,7 @@ StateMent * OptimizationInnerReducePass::pass_(Block * stat) {
 
     outer_vec.push_back( LetStat::make( range_num_var_, IncAddr::make( range_num_var_,new Const(1) ) ) );
 
-    outer_vec.push_back( Print::make(inner_for_num) );
+//    outer_vec.push_back( Print::make(inner_for_num) );
     for (auto state : outer_init_state_vec) {
 
         outer_vec.push_back( OptimizationPass::pass(state ));
