@@ -6,9 +6,9 @@
 #include "util.h"
 #include "mm_malloc.h"
 void csr_spmv(const csrSparseMatrixPtr matrix , const double * x , double * y ) {
-    const int column_num = matrix->column_num;
-    const int row_num = matrix->row_num;
-    const int data_num = matrix->data_num;
+    //const int column_num = matrix->column_num;
+    //const int row_num = matrix->row_num;
+    //const int data_num = matrix->data_num;
     const int * row_ptr = matrix->row_ptr;
     const int * column_ptr = matrix->column_ptr;
     const double * data_ptr = matrix->data_ptr;
@@ -34,7 +34,7 @@ csrSparseMatrixPtr matrix_read_csr( const char * filename ) {
     VALUE_TYPE *csrValA;
 
     //ex: ./spmv webbase-1M.mtx
-    int argi = 1;
+    //int argi = 1;
 
     printf( "-------------- %s --------------\n",filename) ;
 
@@ -207,10 +207,10 @@ csrSparseMatrixPtr matrix_read_csr( const char * filename ) {
     // set csrValA to 1, easy for checking floating-point results
     for (int i = 0; i < nnzA; i++) {
 //#ifndef DEBUG
-//        csrValA[i] = rand() % 10;
+        csrValA[i] = rand() % 10;
 
 //#else
-        csrValA[i] = 1;
+//        csrValA[i] = 1;
 //#endif
     }
 

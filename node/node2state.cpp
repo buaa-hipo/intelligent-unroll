@@ -53,12 +53,12 @@ class Node2StateMent{
         output_name_(output_name),
         input_name_vec_(input_var_vec),
         iterates_set_(iterates_set),
-        name_var_map_(name_var_map),
         name_type_map_(name_type_map),
         gather_name_new_ptr_map_(gather_name_new_ptr_map),
         reduction_name_new_ptr_map_(reduction_name_new_ptr_map),
         scatter_name_new_ptr_map_(scatter_name_new_ptr_map),
         name_new_ptr_map_(name_new_ptr_map),
+        name_var_map_(name_var_map),
         name_varP_varVP_map_(name_varP_varVP_map),
         name_varP_varPV_map_(name_varP_varPV_map),
         gather_name_new_var_map_(gather_name_new_var_map),
@@ -156,6 +156,7 @@ class Node2StateMent{
         node_ptr->dec_need_node();
         auto node_it = _node2var_map.find(node_ptr); 
         Varience * node_var;
+        LOG(INFO) << node_ptr->node_name_ << " " << node_ptr->get_need_node();
         if(node_it == _node2var_map.end()) {
             node_var = new Varience(  node_ptr->get_type(), node_ptr->node_name_ );
             _node2var_map[ node_ptr ] = node_var;
@@ -176,6 +177,7 @@ class Node2StateMent{
        std::vector<StateMent*> seed_state_vec;
        while( !_cal_queue.empty() ) {
             Node * top_node_ptr = _cal_queue.front();
+            LOG(INFO)  << top_node_ptr->get_node_type();
             _cal_queue.pop();
             GatherNode * gather_node = dynamic_cast<GatherNode*>( top_node_ptr );
             if( gather_node != NULL )  {
@@ -371,5 +373,6 @@ void node_tree2state(
         node2state.generate_func();
         LOG(INFO) << "function generated";
         calculate_state = node2state.generate_code_seed(node_ptr);
+        LOG(INFO) << calculate_state;
         LOG(INFO) << "code seed generated";
 }

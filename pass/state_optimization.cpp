@@ -77,7 +77,7 @@ StateMent * OptimizationPass::pass_(Block * stat) {
     std::vector<StateMent*> state_vec_new;
 
     std::vector<StateMent* > * state_vec = stat->get_stat_vec();
-    for( int i = 0 ; i < state_vec->size(); i++  ) {
+    for(unsigned int i = 0 ; i < state_vec->size(); i++  ) {
         StateMent * state = (*state_vec)[i];
         LetStat * let  = dynamic_cast<LetStat*>(state);
         if( let != NULL ) {
@@ -88,7 +88,7 @@ StateMent * OptimizationPass::pass_(Block * stat) {
             if(block_tmp != NULL) {
                      
                 std::vector<StateMent* > * state_vec_tmp = block_tmp->get_stat_vec();
-                for( int j = 0 ; j < state_vec_tmp->size(); j++ ) {
+                for( unsigned int j = 0 ; j < state_vec_tmp->size(); j++ ) {
                     StateMent * state_inner = (*state_vec_tmp)[j]  ;
                     if( dynamic_cast<LetStat*>(state_inner) != NULL || dynamic_cast<Store*>(state_inner) != NULL || dynamic_cast<Scatter*>(state_inner) != NULL || dynamic_cast<Print*>(state_inner) != NULL ) {
                          
@@ -156,7 +156,6 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                 Varience * load_data = new Varience( stat->get_type() );
                 gather_state_vec.push_back( LetStat::make( load_data , Load::make( BitCast::make( IncAddr::make( name_var_map_it->second,load_index  ) , type_scalar_ptr2vector_ptr( name_var_map_it->second->get_type() )  ) )));
 
-                Varience * load_data_shuffle = new Varience( stat->get_type() );
                 
 //                gather_state_vec.push_back( Print::make( load_data ) );
 //                gather_state_vec.push_back( Print::make( permulation_addr ) );
@@ -183,6 +182,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                 return CombinStatVec( gather_state_vec );
             } else {
                 LOG(FATAL) << "Unsupported";
+                return nop_;
             }
         } else if ( gather_info.order_type_ == IncContinue)  {
                 if( gather_scatter_has_load_info_index_.find(index_name) == gather_scatter_has_load_info_index_.end() ) {
@@ -215,7 +215,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                     }
                     LOG(INFO) << mask;
                     if( mask >= VEC_MASK  ) {
-                        LOG(INFO);
+                        LOG(INFO) << load_data_state->get_type();
                         gather_state_vec.push_back( load_data_state );
                     } else {
                         gather_state_vec.push_back( Shuffle::make( load_data_state, new Const( shuffle_index_vec,VECTOR ) ) );
@@ -248,6 +248,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                 return CombinStatVec(gather_state_vec);
         } else {
             LOG(FATAL) << "does not supported";
+            return nop_;
         }
     } else {
         //doesn't have gather information, not optimize it
@@ -263,11 +264,10 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
             StateMent * v2_state_new = pass( stat->get_v2());
             
 
-            StateMent * add_new_state;
             std::vector<StateMent *> reduce_state_vec;
 //            reduce_state_vec.push_back( Print::make( v2_state_new ) );
-            Varience * shuffle_res = new Varience(v2_state_new->get_type()); 
-            add_new_state = LetStat::make( shuffle_res, v2_state_new);
+ //           Varience * shuffle_res = new Varience(v2_state_new->get_type()); 
+//            StateMent * add_new_state = LetStat::make( shuffle_res, v2_state_new);
             ReductionInfo reduction_info = (reduction_map_it->second)[index_];
             if(reduction_info.order_type_ == IncContinue) {
                 int mask = reduction_info.mask_&VEC_MASK;
@@ -310,6 +310,7 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
                  
             } else {
                 LOG(FATAL) << "Unsupported";
+                return nop_;
             }
         } else {
             return StateMentPass::pass_(stat); 
@@ -319,6 +320,7 @@ StateMent * OptimizationPass::pass_(LetStat * stat) {
     Varience * res_var = stat->get_res();
     StateMent * expr_state = stat->get_expr();
     StateMent * expr_state_new = pass(expr_state);
+    if( expr_state_new != nop_ ) {
     Block * expr_block = dynamic_cast<Block*>(expr_state_new);
     if( expr_state_new == expr_state) {
 
@@ -328,19 +330,24 @@ StateMent * OptimizationPass::pass_(LetStat * stat) {
         std::vector<StateMent* > * state_vec = expr_block->get_stat_vec() ;
         std::vector<StateMent *> * new_state_vec = new std::vector<StateMent*>();
         new_state_vec->resize( state_vec->size() , nullptr);
-        for(int i = 0 ; i < state_vec->size() ; i++) {
+        for(unsigned int i = 0 ; i < state_vec->size() ; i++) {
             StateMent * state_inner = (*state_vec)[i];
             if( dynamic_cast<LetStat*>(state_inner) != NULL || dynamic_cast<Store*>(state_inner) != NULL || dynamic_cast<Scatter*>(state_inner) != NULL || dynamic_cast<Print*>(state_inner) != NULL ) {
                 (*new_state_vec)[i] = (*state_vec)[i]; 
             } else {
                 res_var->set_type( state_inner->get_type()  );
-                (*new_state_vec)[i] = LetStat::make(res_var,(*state_vec)[i]);
+                LOG(INFO) << res_var;
+                LOG(INFO) << state_inner; 
+                (*new_state_vec)[i] = LetStat::make(res_var,state_inner);
             }
         }
         return Block::make(new_state_vec);
     } else {
         res_var->set_type( expr_state_new->get_type()  );
         return LetStat::make(res_var,expr_state_new);
+    }
+    } else{
+        return nop_;
     }
 }
 
@@ -358,14 +365,13 @@ StateMent * OptimizationPass::pass_(Load * stat) {
     }
 }
 StateMent * OptimizationPass::pass_(Scatter * stat) {
-    
     StateMent * new_stat = StateMentPass::pass_(stat); 
     const std::string & index_name = stat->index_name_;
     const auto & scatter_map_it = scatter_map_.find(index_name);
 
     if( scatter_map_it != scatter_map_.end() ) {
         Scatter * scatter_new_stat = dynamic_cast<Scatter*>( new_stat );     
-        StateMent * addr_state = scatter_new_stat->get_addr();
+//        StateMent * addr_state = scatter_new_stat->get_addr();
         StateMent * data_state = scatter_new_stat->get_data();
         const ScatterInfo scatter_info = (scatter_map_it->second)[index_];
         Varience * load_index;
@@ -375,6 +381,7 @@ StateMent * OptimizationPass::pass_(Scatter * stat) {
         std::string index_name = stat->index_name_;
         const auto &gather_name_new_var_map_it = gather_name_new_var_map_.find(index_name);
         Varience * scatter_info_var = const_cast<Varience*>( gather_name_new_var_map_it->second );
+        
         if(scatter_info.order_type_ == IncContinue)  {
                 if( gather_scatter_has_load_info_index_.find(index_name) == gather_scatter_has_load_info_index_.end() ) {
                     load_index = new Varience( __int );
@@ -410,6 +417,7 @@ StateMent * OptimizationPass::pass_(Scatter * stat) {
                 return CombinStatVec( scatter_state_vec );
         } else {
             LOG(FATAL)  << "Unsupported";
+            return nop_;
         }
     } else {
         return new_stat;
@@ -512,12 +520,11 @@ StateMent * OptimizationInnerReducePass::pass_(Block * stat) {
         }
     }
     std::vector<StateMent*> inner_state_vec_new ;
-    inner_state_vec_new.resize( inner_state_vec.size(), nullptr); 
-    int i = 0;
+    
     for( auto state : inner_state_vec ) {
-        
-        inner_state_vec_new[i] = OptimizationPass::pass( state );
-        i++;
+        StateMent * opt_state_tmp = OptimizationPass::pass( state );
+        if( opt_state_tmp != nop_ )
+            inner_state_vec_new.push_back(opt_state_tmp);
     }
     for( auto state : inner_reducetion_state_vec ) {
         inner_state_vec_new.push_back( state );
@@ -526,7 +533,7 @@ StateMent * OptimizationInnerReducePass::pass_(Block * stat) {
     Varience * inner_for_num = new Varience(__int);
     
     StateMent * inner_for = For::make( new Const(0), new Const(1), inner_for_num,  CombinStatVec(inner_state_vec_new  ) );
-    
+    LOG(INFO)  << inner_for;
     std::vector<StateMent*> outer_vec;
     outer_vec.push_back( LetStat::make( inner_for_num, Load::make( range_num_var_ ) ) );
 
@@ -565,6 +572,7 @@ StateMent * optimization_state(
         const std::string & output_name,
         StateMent * code_seed
         ) {
+    LOG(INFO) << code_seed;
        std::vector<StateMent*> state_vec;
        for( const auto & it : same_feature_map ) {
             
@@ -603,17 +611,18 @@ StateMent * optimization_state(
        int * same_feature_range_map_ptr = (int*)malloc(sizeof(int)*same_feature_range_map_vec.size());
        int i = 0;
        for( auto it : same_feature_range_map_vec ) {
-            same_feature_range_map_ptr[i] = same_feature_range_map_vec[i]; 
+            same_feature_range_map_ptr[i] = it; 
             i++;
        }
        if( same_feature_range_map_vec.size() > 0 ) {
        Const * range_num_const = new Const( (uint64_t) same_feature_range_map_ptr );
-       Varience * range_num_var = new Varience(__int_ptr);
+       Varience * range_num_var = new Varience(__int_ptr,false);
        state_vec.push_back( LetStat::make(range_num_var, BitCast::make(range_num_const,__int_ptr)));  
        /////////////////////////
        for( const auto & it : same_feature_range_map ) {
             const std::vector<std::pair<int,int>> & index_vec = it.second;
             const int index_vec_num = index_vec.size();
+            LOG(INFO) << index_vec_num;
             OptimizationInnerReducePass opt_reduce_pass = OptimizationInnerReducePass(
                 gather_map,
                 scatter_map,

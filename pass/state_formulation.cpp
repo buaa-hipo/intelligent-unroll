@@ -40,7 +40,7 @@ StateMent * FormulationPass::pass_(Block * stat) {
     std::vector<StateMent* > * state_vec = stat->get_stat_vec();
     std::vector<StateMent* > * new_state_vec = new std::vector<StateMent*>() ;
     bool is_change = false;
-    for(int i = 0 ; i < state_vec->size() ; i++) {
+    for(unsigned int i = 0 ; i < state_vec->size() ; i++) {
         StateMent * new_state = pass((*state_vec)[i]);
         if( new_state == nop_ ) {
             is_change = true;

@@ -25,8 +25,7 @@ std::ostream & operator<<( std::ostream &stream , const GatherInfo &scatter_info
 
 
     template<typename G_R>
-    void generate_info(G_R * &info_ptr, const int * addr, const int vec_num, G_R(*func_ptr)(const int*) ) {
-        info_ptr = new G_R[ vec_num ];
+    void generate_info(G_R * info_ptr, const int * addr, const int vec_num, G_R(*func_ptr)(const int*) ) {
         for( int i = 0 ; i < vec_num ; i++ ) {
             info_ptr[i] = func_ptr( addr + i * VECTOR );
         }
@@ -76,7 +75,6 @@ ScatterInfo generate_disorder_info_elem(const int * elem_addr ) {
     return scatter_info;
 }
  OrderType get_order_type(const int * index_ptr) {
-    bool is_continue = true;
     int inc_num = 0;
     int dec_num = 0;
     int equal_num = 0;
@@ -165,25 +163,24 @@ ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterIn
     return reduction_info;
 }
 
-void generate_info( ScatterInfo *&info_ptr ,const int *addr,int len) {
+void generate_info( ScatterInfo *info_ptr ,const int *addr,int len) {
     generate_info<ScatterInfo>( info_ptr, addr,len,generate_scatter_info_elem );
 }
-void generate_info( ReductionInfo *&info_ptr ,const int *addr,int len, ScatterInfo * scatter_info_ptr ) {
-        const int vec_num = len ;
-        info_ptr = new ReductionInfo[ vec_num ];
+void generate_info( ReductionInfo *info_ptr ,const int *addr, const int vec_num , ScatterInfo * scatter_info_ptr ) {
         for( int i = 0 ; i < vec_num ; i++ ) {
             info_ptr[i] = generate_reduction_info_elem( addr + i * VECTOR, scatter_info_ptr[i] );
         }
 }
 
-void generate_info( GatherInfo *&info_ptr ,const int *addr,int len) {
+void generate_info( GatherInfo * info_ptr ,const int *addr,int len) {
     generate_info<GatherInfo>( info_ptr, addr,len,generate_gather_info_elem );
 }
 size_t *  get_feature_hash( const std::map<std::string,GatherInfo*> &gather_map,
                             const std::map<std::string,ScatterInfo*> & scatter_map,
                             const std::map<std::string,ReductionInfo*>&reduction_map,
                             const int table_column_num ) {
-    size_t * key_ptr = (size_t*)malloc(sizeof(size_t) * table_column_num);
+//    size_t * key_ptr = (size_t*)malloc(sizeof(size_t) * table_column_num);
+    size_t * key_ptr = new size_t[ table_column_num ]; 
     for( int i = 0 ; i < table_column_num ; i++ ) {
         size_t key = 0;
         key_ptr[i] = key;
@@ -214,6 +211,11 @@ size_t *  get_feature_hash( const std::map<std::string,GatherInfo*> &gather_map,
 void combin_same_feature_together( std::unordered_map<size_t, std::vector<int>> & same_feature_map , size_t * hash_info_ptr , const int table_column_num ) {
     
     for( int i = 0 ; i < table_column_num ; i++ ) {
+/*         if( same_feature_map.find( hash_info_ptr[i] ) == same_feature_map.end() ) {
+               
+             same_feature_map[hash_info_ptr[i]] = std::vector<int>();
+         }
+         */
          same_feature_map[ hash_info_ptr[ i ] ].push_back( i );
     }
 }
@@ -227,7 +229,7 @@ void combin_same_write_pattern_together_elem( std::vector<std::pair<int,int>> &s
         int old_write_local = scatter_info.data_index_[0];  
         int old_write_local_index = 0;
         int j = 0;
-        int write_local;
+        int write_local = old_write_local;
         for( int i = 1; i < index_vec_size ; i++ ) {
             const ScatterInfo & scatter_info_tmp = info_ptr[index_vec[i]];
             write_local = scatter_info_tmp.data_index_[0];
@@ -298,19 +300,11 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
         std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map
         ) {
         //////Init feature table
-        const int gather_num = gather_set.size();
-        const int scatter_num = scatter_set.size();
-        const int reduction_num = reduction_set.size(); 
-        const int args_num = gather_num + scatter_num + reduction_num;
-
-        int table_row_begin = 0;
-        int reduction_i = 0;
-        int scatter_i = 0;
+        LOG(INFO) << table_column_num;
         std::string output_name;
         for( const auto & scatter_index : scatter_set ) {
             output_name = scatter_index;
-            ScatterInfo * scatter_info_tmp = NULL ;
-            int table_row_i = table_row_begin + scatter_i;
+            ScatterInfo * scatter_info_tmp = new ScatterInfo[table_column_num] ;
 
             auto name2ptr_map_it = name2ptr_map.find(scatter_index);
 
@@ -319,29 +313,23 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
             ////////////reduction
             if( reduction_set.find(scatter_index) != reduction_set.end()  ) {
 
-                ReductionInfo * reduction_info_tmp = NULL;
+                ReductionInfo * reduction_info_tmp = new ReductionInfo[ table_column_num ];
 
                 generate_info( reduction_info_tmp, (int*)name2ptr_map_it->second, table_column_num ,scatter_info_tmp );
 
                 reduction_map[scatter_index] = reduction_info_tmp; 
                 gather_map[ scatter_index ] = scatter_info_tmp; 
-                scatter_i++;
             }
-            scatter_i++;
         }
-        table_row_begin += scatter_num + reduction_num;
-        int gather_i = 0;
         for( const auto & gather_index : gather_set ) {
 
-            GatherInfo * gather_info_tmp = NULL;
-            int table_row_i = table_row_begin + gather_i; 
+            GatherInfo * gather_info_tmp = new GatherInfo[table_column_num];
             auto name2ptr_map_it = name2ptr_map.find(gather_index);
             generate_info( gather_info_tmp , (int*)name2ptr_map_it->second , table_column_num );
 
             gather_map[ gather_index ] = gather_info_tmp;
-            gather_i++;
         }
-        
+        LOG(INFO) << table_column_num;
         /////////////////
         size_t * hash_table = get_feature_hash(  gather_map,scatter_map,reduction_map,table_column_num );
         /////////////////combin same feature
@@ -350,6 +338,7 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
         ///assume that the number of scatter or store operation is only one
         /////
 
+        const int scatter_num = scatter_set.size();
         CHECK(scatter_num == 1 || scatter_num == 0) << "scatter_num should be 1 or 0";
         if(scatter_num == 1) {
 
@@ -370,4 +359,5 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
             "OrderEquel"
         }; 
         stream << order_type_str[ order_type ];
+        return stream;
     }

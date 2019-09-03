@@ -385,8 +385,6 @@ class Const : public Expr{
     }
     std::string get_data_str() {
         std::stringstream ss;
-        double * tmp_d;
-        int * tmp_i;
         const int lanes = type_.get_lanes();
         switch( type_.get_data_type() ) {
             case DOUBLE:
@@ -880,7 +878,7 @@ class ComplexReduce : public Expr {
     int mask_;
     protected:
 
-    ComplexReduce( StateMent * v1 , StateMent * index,StateMent * shuffle_index_ptr , int mask) : v1_(v1),index_(index),shuffle_index_ptr_(shuffle_index_ptr),mask_(mask) {
+    ComplexReduce( StateMent * v1 , StateMent * index,StateMent * shuffle_index_ptr , int mask) : v1_(v1),shuffle_index_ptr_(shuffle_index_ptr),index_(index),mask_(mask) {
         Type * type_ptr_tmp = &v1_->get_type();
         type_ = *type_ptr_tmp;
     }

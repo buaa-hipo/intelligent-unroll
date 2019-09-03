@@ -175,7 +175,7 @@ LLVMCodeGen::LLVMCodeGen() {
     }
 llvm::Value * LLVMCodeGen::CodeGen_(Block * stat  ) {
     std::vector<StateMent* > * state_vec_ptr = stat->get_stat_vec();
-    for(int i = 0 ; i < state_vec_ptr->size() ; i++) {
+    for(unsigned int i = 0 ; i < state_vec_ptr->size() ; i++) {
         CodeGen((*state_vec_ptr)[i]);
     }
         return Null_;
@@ -514,6 +514,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
         }
 
     }
+    return res;
 }
 llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
     llvm::Value * v1_value = CodeGen(stat->get_v1());
@@ -578,7 +579,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(BitCast * stat) {
         llvm::Type* llvmtype = Type2LLVMType(type);
         const Type & v1_type = v1->get_type();
         const Type & stat_type = stat->get_type();
-        if( (v1_type == __int && (stat_type == __double|| stat_type == __float )) ||( v1_type == __int_v ) && ( stat_type == __double_v || stat_type == __float_v )  ) {
+        if( (v1_type == __int && (stat_type == __double|| stat_type == __float )) ||(( v1_type == __int_v ) && ( stat_type == __double_v || stat_type == __float_v ) ) ) {
             return build_ptr_->CreateSIToFP(v1_value, llvmtype);
         } else if( v1_type == __int64 &&( stat_type == __int_ptr || stat_type == __double_ptr || stat_type == __float_ptr ) ){
             return build_ptr_->CreateIntToPtr( v1_value, llvmtype);
@@ -658,9 +659,9 @@ llvm::Value * LLVMCodeGen::CodeGen_(Mul * stat) {
     }
 llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
     llvm::Value * v1 = CodeGen( stat->get_v1() );
-    const Type & type = stat->get_v1()->get_type();
-    const int lanes = type.get_lanes();
-    llvm::Value * index = CodeGen( stat->get_index() );
+//    const Type & type = stat->get_v1()->get_type();
+//    const int lanes = type.get_lanes();
+//    llvm::Value * index = CodeGen( stat->get_index() );
     int mask = stat->get_mask();
     if(VECTOR == VECTOR16) {
         llvm::Value * shuffle_index_ptr = CodeGen(stat->get_shuffle_index_ptr());
@@ -829,7 +830,6 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
         }
         Varience * ret = func_state->get_ret();
         
-        StateMent * state = func_state->get_state();
         llvm::Type * llvm_ret_type = Type2LLVMType( ret->get_type());
         llvm::FunctionType* ftype = llvm::FunctionType::get( llvm_ret_type , llvm_args_type, false );
 

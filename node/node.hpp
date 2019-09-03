@@ -18,10 +18,10 @@ class Node{
     int get_need_node() const{
         return need_node_;
     }
-    Node(){
+    Node():need_node_(0){
     }
     Node(const Type & type,const std::string & node_name ):
-    type_(type),node_name_(node_name),need_node_(0)
+    need_node_(0),node_name_(node_name),type_(type)
     {
     }
     Type get_type()const {

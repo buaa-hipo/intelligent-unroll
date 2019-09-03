@@ -80,7 +80,7 @@ void StateMentPrint::print_(StateMent * stat,std::ostream&os) {
 void StateMentPrint::print_(Block * stat,std::ostream&os) {
 
     const std::vector<StateMent* > * state_vec = stat->get_stat_vec();
-    for(int i = 0 ; i < state_vec->size() ; i++) {
+    for(unsigned int i = 0 ; i < state_vec->size() ; i++) {
         print((*state_vec)[i],os);
     }
 }

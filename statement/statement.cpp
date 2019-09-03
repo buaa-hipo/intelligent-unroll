@@ -6,7 +6,7 @@
         else if(stat_vec.size() == 1) {return stat_vec[0];}
         else {
             StateMent * block_stat = Block::make( stat_vec[0],stat_vec[1]);
-            for( int i = 2 ; i < stat_vec.size(); i++ ) {
+            for(unsigned int i = 2 ; i < stat_vec.size(); i++ ) {
                 block_stat = Block::make( block_stat, stat_vec[i] );
             }
             return block_stat;

@@ -12,7 +12,7 @@ class Type {
     int lanes_;
     Type * pointer2type_;
     public:
-    Type( Type * pointer2type, int lanes ) : data_type_(PTR),pointer2type_(pointer2type), lanes_(lanes) {
+    Type( Type * pointer2type, int lanes ) : data_type_(PTR),lanes_(lanes),pointer2type_(pointer2type) {
     }
     Type(DataType data_type,  int lanes ) : data_type_(data_type),lanes_(lanes){ 
         pointer2type_ = nullptr;
@@ -82,7 +82,6 @@ class Type {
         return ss.str();
     }
     inline bool operator==( const Type & t1 ) const {
-        bool ret = true;
         if( this->get_pointer2type() != nullptr && t1.get_pointer2type() != nullptr ) {
             return ( this->lanes_ == t1.get_lanes())&&(*(this->get_pointer2type())) == (*(t1.get_pointer2type())) ;
         }

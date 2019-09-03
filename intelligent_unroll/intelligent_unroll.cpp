@@ -121,7 +121,7 @@ class IntelligentUnroll{
                 func_state_ptr_,
                 root_node_ptr_
                 );
-
+        LOG(INFO) << root_node_ptr_;
         LOG(INFO) << "node tree 2 statement finished";
         ///////////// formulation and optimization
         calculate_state_ = formulation_state(
@@ -150,8 +150,10 @@ class IntelligentUnroll{
         LOG(INFO) << "optimize statement finished";
         /////////////combin statement with func_statement
         StateMent * init_func = CombinStatVec(func_init_state_vec_);
-        func_state_ptr_->set_state( Block::make( init_func, calculate_state_ ) );
-        
+        StateMent * func_state = Block::make( init_func,calculate_state_ );
+        LOG(INFO) << func_state;
+        func_state_ptr_->set_state( func_state );
+         
         LOG(INFO) << "merge state finished";
         /////////// 
         LLVMCodeGen codegen;

@@ -40,7 +40,7 @@ bool check_equal(const T * v1, const T * v2, const int num ) {
     for( int i = 0 ; i < num ; i++ ) {
         if( (v1[i]-v2[i]) > 1e-3 || (v2[i]-v1[i]) > 1e-3 ) {
             flag = false;
-            std::cout<< i<< " "  << v1[i]  << " "<< v2[i]<<"\n";
+           std::cout<< i<< " "  << v1[i]  << " "<< v2[i]<<"\n";
         }
     }
     if(flag) 
@@ -87,15 +87,12 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
     
     DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
-#ifdef DEBUG
-    init_vec(x_array,column_num,1);
+//    init_vec(x_array,column_num,1);
 
-    //init_vec( x_array, column_num , 1 ,true);
-#else
     init_vec( x_array, column_num , 1 ,true);
+    //init_vec( x_array, column_num , 1 ,true);
 
     //init_vec(x_array,column_num,1);
-#endif
     init_vec( y_array, row_num , 0 );
     init_vec( y_array_bak, row_num , 0 );
 
@@ -136,25 +133,18 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("aot");
     
     func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
-#ifndef DEBUG
-//     for( int i = 0 ; i < 50 ; i++ )
-//        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+     for( int i = 0 ; i < 50 ; i++ )
+        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
 #define TIMES 100
-#else
-#define TIMES 0
-
-#endif
     Timer::startTimer("jit");
-//     for( int i = 0 ; i < TIMES ; i++ )
-//        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+     for( int i = 0 ; i < TIMES ; i++ )
+        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
-
     if(!check_equal( y_array_bak, y_array, row_num )) {
         return 1;
     }
-
     return 0;
 }

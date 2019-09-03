@@ -13,7 +13,6 @@ class TransformData {
     const std::map<std::string,ScatterInfo*> &scatter_map_;
     const std::map<std::string,ReductionInfo*> &reduction_map_;
 
-    int table_column_num_;
     ////output
     std::map<std::string,int*> & gather_name_new_ptr_map_;
     std::map<std::string,int*> & reduction_name_new_ptr_map_;
@@ -24,6 +23,8 @@ class TransformData {
     //index
     const std::unordered_map<size_t,std::vector<int>> &same_feature_map_;
     const std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map_;
+
+    const int table_column_num_;
         ///
     #define RA_ARRAGE_ELEM( TYPE ) \
     int rearrange_elem(const int index, TYPE * data_ptr,int i, TYPE * new_data_ptr) { \
@@ -116,6 +117,51 @@ class TransformData {
                 }
             return i;
     }
+
+    int * malloc_new_data( ScatterInfo * data_ptr ) {
+
+        int need_data_num = 0;
+        for( const auto & same_feature_it : same_feature_map_ ) {
+            const std::vector<int> & vec_tmp = same_feature_it.second;
+            for( auto index : vec_tmp ) {
+                if( data_ptr[index].order_type_ == DisOrder ) {
+                    const int mask = data_ptr[index].get_mask();
+                    need_data_num += mask;
+                    if( mask != VECTOR )
+                        need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                } else if( data_ptr[index].order_type_ == IncContinue ){
+                    need_data_num ++; 
+                } else if( data_ptr[index].order_type_ == OrderEquel ){
+                    need_data_num++; 
+                } else {
+                    LOG(FATAL) << "Unsupported" << data_ptr[index].order_type_;
+                }        
+            }
+        }
+        for( const auto & same_feature_range_it : same_feature_range_map_ ) {
+            const std::vector<std::pair<int,int>> & vec_tmp = same_feature_range_it.second;
+            for( auto index_pair : vec_tmp ) {
+                int index = index_pair.first;
+                if( data_ptr[index].order_type_ == DisOrder ) {
+                    const int mask = data_ptr[index].get_mask();
+                    need_data_num += mask;
+                    if( mask != VECTOR )
+                        need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                } else if( data_ptr[index].order_type_ == IncContinue ){
+                    need_data_num ++; 
+                } else if( data_ptr[index].order_type_ == OrderEquel ){
+                    need_data_num++; 
+                } else {
+                    LOG(FATAL) << "Unsupported" << data_ptr[index].order_type_;
+                }                 
+            }
+        }
+        int * new_data_ptr = NULL;
+        if( need_data_num > 0 ) 
+            new_data_ptr = ( int* )malloc(sizeof( int ) *  need_data_num );
+        return new_data_ptr;
+    }
+
 public:
     ///Construct function
     TransformData(
@@ -135,7 +181,7 @@ public:
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
     std::map<std::string,void*> & name_new_ptr_map,
-    int table_column_num
+    const int table_column_num
             ) : 
         name_type_map_(name_type_map),
         name_ptr_map_(name_ptr_map),
@@ -154,6 +200,27 @@ public:
         same_feature_range_map_(same_feature_range_map),
         table_column_num_(table_column_num)
     {
+    }
+    int * rearrange_scatter( ScatterInfo * data_ptr ) {
+       int * new_data_ptr = malloc_new_data(data_ptr);
+       if(new_data_ptr != NULL) { 
+       int i = 0;
+        for( const auto & same_feature_it : same_feature_map_ ) {
+            const std::vector<int> & vec_tmp = same_feature_it.second;
+            for( auto index : vec_tmp ) {
+                 
+                i = rearrange_elem( index, data_ptr, i, new_data_ptr) ;
+            }
+        }
+        for( const auto & same_feature_range_it : same_feature_range_map_ ) {
+            const std::vector<std::pair<int,int>> & vec_tmp = same_feature_range_it.second;
+            for( auto index_pair : vec_tmp ) {
+                int begin = index_pair.first;
+                i = rearrange_elem( begin, data_ptr, i, new_data_ptr) ;
+            }
+        }
+        }
+       return new_data_ptr;
     }
 
     template<typename R,typename InfoT>
@@ -216,7 +283,7 @@ public:
             for( auto scatter_index : scatter_set_ ) {
                 auto scatter_info_it = scatter_map_.find( scatter_index );
                 CHECK(scatter_info_it != scatter_map_.end()) << "Can not find "<<scatter_index;
-                int * rearrange_scatter_data = rearrange<int,ScatterInfo>( scatter_info_it->second );
+                int * rearrange_scatter_data = rearrange_scatter( scatter_info_it->second );
                 scatter_name_new_ptr_map_[ scatter_index ] = rearrange_scatter_data;
                 /////////////reduction
                 auto reduction_info_it = reduction_map_.find( scatter_index );

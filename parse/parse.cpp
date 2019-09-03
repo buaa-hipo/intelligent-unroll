@@ -96,7 +96,7 @@ class ParseClass{
     }
 
 Token get_next_token(const std::string &expr) {
-    static int index = 0;
+    static unsigned int index = 0;
     Token token;
     for( ; index < expr.size() && (expr[index] == ' ' || expr[index]=='\n');  index++ ) ;
 
@@ -398,6 +398,11 @@ void ParseExpr(const std::string & expr) {
         } else if(equal_type == MultEquel) {
             LOG(FATAL)  << "Unsupported";
         }
+        LOG(INFO) << addr_ptr->node_name_ << " ";
+
+        LOG(INFO) << index_node_ptr->node_name_ << " ";
+        LOG(INFO) << data_ptr->node_name_ << " ";
+
         root_node_ptr_ = new ScatterNode( addr_ptr, index_node_ptr, data_ptr );
 
         root_node_ptr_->index_name_ = index_node_ptr->addr_name_;
@@ -471,16 +476,16 @@ void parse_expression(
         std::string & output_name
         ) {
 
-        ParseClass parse_class = ParseClass( \ 
-                root_node_ptr, \
-                gather_set, \
-                scatter_set,\
-                reduction_set,\
-                load_set,\
-                name_type_map,\
-                input_name_vec,\
-                iterates_set,\
-                output_name\
+        ParseClass parse_class = ParseClass(  
+                root_node_ptr, 
+                gather_set, 
+                scatter_set,
+                reduction_set,
+                load_set,
+                name_type_map,
+                input_name_vec,
+                iterates_set,
+                output_name
                 );
         parse_class.Parse( expr_str );
 }

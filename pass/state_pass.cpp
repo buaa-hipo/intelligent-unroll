@@ -16,7 +16,7 @@ StateMent* StateMentPass::pass_(Block * stat) {
 
     new_state_vec->resize( state_vec->size() , nullptr);
     bool is_change = false;
-    for(int i = 0 ; i < state_vec->size() ; i++) {
+    for(unsigned int i = 0 ; i < state_vec->size() ; i++) {
         StateMent * new_state = pass((*state_vec)[i]);
 
         if( new_state != (*state_vec)[i] ) {
