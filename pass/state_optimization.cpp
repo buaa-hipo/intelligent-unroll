@@ -201,7 +201,29 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                 CompressAddr compress_addr = bit2addr.generate_compress( mask );
                 Const * compress_mem_mask_const = new Const( compress_addr.mask_);
                 const auto & name_var_map_it = name_var_map_.find(addr_name);
-                gather_state_vec.push_back(  Load::make( BitCast::make( IncAddr::make( name_var_map_it->second, load_index),type_scalar_ptr2vector_ptr(name_var_map_it->second->get_type())), compress_mem_mask_const ) );
+                if(scatter_map_.find( index_name ) == scatter_map_.end() ) {
+
+                    StateMent * load_data_state = Load::make( BitCast::make( IncAddr::make( name_var_map_it->second, load_index),type_scalar_ptr2vector_ptr(name_var_map_it->second->get_type())), compress_mem_mask_const ) ;
+                    int shuffle_index_vec[VECTOR];
+                    int shuffle_index_vec_index = -1;
+                    for( int shuffle_index_vec_i = 0 ; shuffle_index_vec_i < VECTOR ; shuffle_index_vec_i++  ) {
+                        if( (mask & (1<<shuffle_index_vec_i)) != 0 ) {
+                            shuffle_index_vec_index++;
+                        }
+                        CHECK(shuffle_index_vec_index>=0);
+                        shuffle_index_vec[ shuffle_index_vec_i ] = shuffle_index_vec_index; 
+                    }
+                    LOG(INFO) << mask;
+                    if( mask >= VEC_MASK  ) {
+                        LOG(INFO);
+                        gather_state_vec.push_back( load_data_state );
+                    } else {
+                        gather_state_vec.push_back( Shuffle::make( load_data_state, new Const( shuffle_index_vec,VECTOR ) ) );
+                    }
+                } else {
+                    gather_state_vec.push_back(  Load::make( BitCast::make( IncAddr::make( name_var_map_it->second, load_index),type_scalar_ptr2vector_ptr(name_var_map_it->second->get_type())), compress_mem_mask_const ) );
+                }
+//                gather_state_vec.push_back(  Load::make( BitCast::make( IncAddr::make( name_var_map_it->second, load_index),type_scalar_ptr2vector_ptr(name_var_map_it->second->get_type())), compress_mem_mask_const ) );
                 return CombinStatVec(gather_state_vec);
 
         } else if( gather_info.order_type_ == OrderEquel ){
