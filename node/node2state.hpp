@@ -33,6 +33,7 @@ void node_tree2state(
         std::vector<StateMent *> &func_init_state_vec,
         StateMent * & calculate_state,
         FuncStatement * &func_state_ptr,
-         Node * node_ptr
+         Node * node_ptr,
+         const int vector
         ) ;
 #endif

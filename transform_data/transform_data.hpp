@@ -28,6 +28,7 @@ void transform_data(
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
     std::map<std::string,void*> & name_new_ptr_map,
-    int table_column_num
+    int table_column_num,
+    const int vector
         ) ;
 #endif

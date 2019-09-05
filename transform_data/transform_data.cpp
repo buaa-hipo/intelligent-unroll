@@ -25,18 +25,21 @@ class TransformData {
     const std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map_;
 
     const int table_column_num_;
+
+    const int vector_;
+    const int VEC_MASK;
         ///
     #define RA_ARRAGE_ELEM( TYPE ) \
     int rearrange_elem(const int index, TYPE * data_ptr,int i, TYPE * new_data_ptr) { \
         int inner_i ;\
-        for( inner_i = 0 ; inner_i < VECTOR ; inner_i++ ) {\
-            new_data_ptr[ i * VECTOR + inner_i ] = data_ptr[index * VECTOR + inner_i];\
+        for( inner_i = 0 ; inner_i < vector_ ; inner_i++ ) {\
+            new_data_ptr[ i * vector_ + inner_i ] = data_ptr[index * vector_ + inner_i];\
         }\
         i++;\
         return i; \
     } \
     TYPE * malloc_new_data( TYPE * data_ptr ) { \
-        TYPE * new_data_ptr = new TYPE[ table_column_num_ * VECTOR];\
+        TYPE * new_data_ptr = new TYPE[ table_column_num_ * vector_];\
         if(new_data_ptr == NULL) LOG(FATAL)  << "malloc failed";\
         return new_data_ptr;\
     }
@@ -50,7 +53,7 @@ class TransformData {
                 if( reduction_info_tmp.order_type_ == DisOrder ) {
                     const int mask = reduction_info_tmp.get_mask() & VEC_MASK;
                     for( int mask_i = 0 ; mask_i < mask ; mask_i++ ) {
-                        for( int disorder_i = 0 ; disorder_i < (VECTOR >> 2) ; disorder_i++) {
+                        for( int disorder_i = 0 ; disorder_i < (vector_ >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = reduction_info_tmp.reduction_addr_[mask_i].int_data_vec_[disorder_i];
                             i++;
                         }
@@ -67,8 +70,8 @@ class TransformData {
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
             if( data_ptr[i].order_type_ == DisOrder ) {
                 const int mask = data_ptr[i].get_mask() & VEC_MASK;
-                if( mask != VECTOR )
-                    need_data_num += sizeof( MASK ) * (VECTOR) * mask  / sizeof(int) ;            
+                if( mask != vector_ )
+                    need_data_num += sizeof( MASK ) * (vector_) * mask  / sizeof(int) ;            
             } else if(data_ptr[i].order_type_ == IncContinue || data_ptr[i].order_type_ == OrderEquel)  {
             
             } else {
@@ -86,9 +89,9 @@ class TransformData {
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
             
             if( data_ptr[i].order_type_ == DisOrder ) {
-                const int mask = data_ptr[i].get_mask();
+                const int mask = data_ptr[i].get_mask() & VEC_MASK;
                 need_data_num += mask;
-                if( mask != VECTOR )
+                if( mask != vector_ )
                     need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
             } else if( data_ptr[i].order_type_ == IncContinue ){
                 need_data_num ++; 
@@ -106,11 +109,12 @@ class TransformData {
     int rearrange_elem(const int index, GatherInfo * data_ptr,int i,int * new_data_ptr) {
                 const GatherInfo & gather_info_tmp = data_ptr[ index ];
                 if( gather_info_tmp.order_type_ == DisOrder ) {
-                    for( int mask_i = 0 ; mask_i < gather_info_tmp.get_mask() ; mask_i++,i++) { 
+                    const int mask = gather_info_tmp.get_mask() & VEC_MASK;
+                    for( int mask_i = 0 ; mask_i < mask ; mask_i++,i++) { 
                         new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
                     }
-                    if( gather_info_tmp.get_mask() != VECTOR ) {
-                        for( int disorder_i = 0 ; disorder_i < (VECTOR >> 2) ; disorder_i++) {
+                    if( mask != vector_ ) {
+                        for( int disorder_i = 0 ; disorder_i < (vector_ >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = gather_info_tmp.disorder_addr_.int_data_vec_[disorder_i];
                             i++;
                         }
@@ -132,10 +136,10 @@ class TransformData {
             const std::vector<int> & vec_tmp = same_feature_it.second;
             for( auto index : vec_tmp ) {
                 if( data_ptr[index].order_type_ == DisOrder ) {
-                    const int mask = data_ptr[index].get_mask();
+                    const int mask = data_ptr[index].get_mask() & VEC_MASK;
                     need_data_num += mask;
-                    if( mask != VECTOR )
-                        need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                    if( mask != vector_ )
+                        need_data_num += sizeof( MASK ) * vector_ / sizeof(int) ;            
                 } else if( data_ptr[index].order_type_ == IncContinue ){
                     need_data_num ++; 
                 } else if( data_ptr[index].order_type_ == OrderEquel ){
@@ -150,10 +154,10 @@ class TransformData {
             for( auto index_pair : vec_tmp ) {
                 int index = index_pair.first;
                 if( data_ptr[index].order_type_ == DisOrder ) {
-                    const int mask = data_ptr[index].get_mask();
+                    const int mask = data_ptr[index].get_mask() & VEC_MASK;
                     need_data_num += mask;
-                    if( mask != VECTOR )
-                        need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                    if( mask != vector_ )
+                        need_data_num += sizeof( MASK ) * vector_ / sizeof(int) ;            
                 } else if( data_ptr[index].order_type_ == IncContinue ){
                     need_data_num ++; 
                 } else if( data_ptr[index].order_type_ == OrderEquel ){
@@ -188,7 +192,8 @@ public:
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
     std::map<std::string,void*> & name_new_ptr_map,
-    const int table_column_num
+    const int table_column_num,
+    const int vector
             ) : 
         name_type_map_(name_type_map),
         name_ptr_map_(name_ptr_map),
@@ -205,7 +210,9 @@ public:
         name_new_ptr_map_(name_new_ptr_map),
         same_feature_map_(same_feature_map),
         same_feature_range_map_(same_feature_range_map),
-        table_column_num_(table_column_num)
+        table_column_num_(table_column_num),
+        vector_(vector),
+        VEC_MASK(0xffffffff >> ( 32 - vector ))
     {
     }
     int * rearrange_scatter( ScatterInfo * data_ptr ) {
@@ -326,7 +333,8 @@ void transform_data(
     std::map<std::string,int*> & reduction_name_new_ptr_map,
     std::map<std::string,int*> & scatter_name_new_ptr_map,
     std::map<std::string,void*> & name_new_ptr_map,
-    int table_column_num
+    int table_column_num,
+    const int vector
         ) {
     TransformData transform_data( 
             name_type_map,
@@ -344,7 +352,8 @@ void transform_data(
             reduction_name_new_ptr_map,
             scatter_name_new_ptr_map,
             name_new_ptr_map,
-            table_column_num
+            table_column_num,
+            vector
             );
     transform_data.rearrange_all();
 }

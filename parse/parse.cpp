@@ -41,7 +41,7 @@
 
 class ParseClass{
     private:
-
+    unsigned int max_bits_;
     std::vector<std::string> scatter_impermulate_var_set_;
     Type output_var_type_;
     Token current_token_;
@@ -70,6 +70,7 @@ class ParseClass{
         std::set<std::string> & iterates_set,
         std::string & output_name
         ):
+        max_bits_(0),
         root_node_ptr_(root_node_ptr),
         gather_set_(gather_set),
         scatter_set_(scatter_set),
@@ -183,16 +184,22 @@ void ParseOutput(const std::string & expr ) {
         }
 
         if(current_token_type == Float) {
+
+            max_bits_ = max_bits_ > sizeof(float) * ByteSize ? max_bits_ : sizeof(float) * ByteSize;
             if( is_pointer ) 
                 var_type = __float_ptr;
             else
                 var_type = __float;
         } else if(current_token_type == Double) {
+
+            max_bits_ = max_bits_ > sizeof(double) * ByteSize ? max_bits_ : sizeof(double) * ByteSize;
             if( is_pointer )
                 var_type = __double_ptr;
             else
                 var_type = __double;
         } else if(current_token_type == Int) {
+
+            max_bits_ = max_bits_ > sizeof(int) * ByteSize ? max_bits_ : sizeof(int) * ByteSize;
             if( is_pointer )   
             var_type = __int_ptr;
             else
@@ -246,16 +253,21 @@ void ParseInput(const std::string & expr ) {
         }
         Type var_type;
         if(current_token_type == Float) {
+            max_bits_ = max_bits_ > sizeof(float) * ByteSize ? max_bits_ : sizeof(float) * ByteSize;
             if(is_pointer)
                 var_type = __float_ptr;
             else
                 var_type = __float;
         } else if(current_token_type == Double) {
+
+            max_bits_ = max_bits_ > sizeof(double) * ByteSize ? max_bits_ : sizeof(double) * ByteSize;
             if(is_pointer)
                 var_type = __double_ptr;
             else
                 var_type = __double;
         } else if(current_token_type == Int) {
+
+            max_bits_ = max_bits_ > sizeof(int) * ByteSize ? max_bits_ : sizeof(int) * ByteSize;
             if(is_pointer)
                 var_type = __int_ptr;
             else
@@ -436,7 +448,7 @@ void ParseExpr(const std::string & expr) {
     }
 }
 public:
-void Parse(const std::string & expr ) {
+int Parse(const std::string & expr ) {
 
     current_token_ = get_next_token( expr);
     bool end_circle = false;
@@ -460,10 +472,11 @@ void Parse(const std::string & expr ) {
                 LOG(FATAL) << "Type Wrong" << current_token_;
                 break;
         }
-    }  while(!end_circle);   
+    }  while(!end_circle);  
+    return max_bits_;
 }
 };
-void parse_expression( 
+int parse_expression( 
         const std::string &expr_str,
         Node * &root_node_ptr,
         std::set<std::string> &gather_set,
@@ -487,7 +500,20 @@ void parse_expression(
                 iterates_set,
                 output_name
                 );
-        parse_class.Parse( expr_str );
+        const int max_bits_ = parse_class.Parse( expr_str );
+        #ifdef __AVX512CD__
+            const int vector_bits = 512;
+
+            return vector_bits / max_bits_;
+        #else 
+            #ifdef __AVX2__
+            const int vector_bits = 256;
+
+            return vector_bits / max_bits_;
+            #else
+            LOG(FATAL) << "Unsupported architetures";
+            #endif
+        #endif
 }
 
 

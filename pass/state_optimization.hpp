@@ -27,6 +27,7 @@ StateMent * optimization_state(
         const std::unordered_map<size_t,std::vector<int>> &same_feature_map,
         const std::unordered_map<size_t,std::vector<std::pair<int,int>>>&  same_feature_range_map,
         const std::string & output_name,
-        StateMent * code_seed
+        StateMent * code_seed,
+        const int vector
         ); 
 #endif

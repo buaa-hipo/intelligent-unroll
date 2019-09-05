@@ -110,10 +110,10 @@ int main( int argc , char const * argv[] ) {
             int * n2,\
             float * rank,\
             float * nneighbor\
-     output:double * sum \
+     output:float * sum \
      lambda i : \
-            y_array[ row_ptr[i] ] += data_ptr[i] \
-            * x_array[column_ptr[i]]\
+            sum[ n2[i] ] += nneighbor[n1[i]] \
+            / rank[n1[i]]\
             ";
     std::map<std::string,void*> name2ptr_map;
     name2ptr_map[ "row_ptr" ] = row_ptr_all;

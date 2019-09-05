@@ -78,15 +78,15 @@
             CompressAddr compress_addr;
 
             MASK compress_mem_mask = 0;
-            for( int i = 0; i < VECTOR ; i++ ) {
+            for( int i = 0; i < vector_ ; i++ ) {
                 if(( (1<<i) & circle_mask ) != 0) {
                     compress_addr.compress_vec[ii] = i;
                     compress_mem_mask |= (1<<ii);
                     ii++;
                 }
             }
-            for( ; ii < VECTOR ; ii++ ) {
-                compress_addr.compress_vec[ii] = VECTOR;
+            for( ; ii < vector_ ; ii++ ) {
+                compress_addr.compress_vec[ii] = vector_;
             }
             compress_addr.mask_ = compress_mem_mask;
             return compress_addr;

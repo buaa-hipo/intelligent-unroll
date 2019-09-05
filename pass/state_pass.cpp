@@ -321,7 +321,7 @@ StateMent * StateMentPass::pass_(BroadCast * stat) {
     if( v1_state == v1_state_new  ) {
         return stat;
     } else {
-        return BroadCast::make(v1_state_new);
+        return BroadCast::make(v1_state_new,stat->get_type().get_lanes());
     }
 
 }

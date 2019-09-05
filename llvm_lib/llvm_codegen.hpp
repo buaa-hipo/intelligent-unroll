@@ -16,8 +16,8 @@
                 return this->CodeGen_(__class_name);})\
  
 class LLVMCodeGen {
-    const int lanes_ = VECTOR;
-
+    //const int lanes_ = VECTOR;
+    const int vector_;
     const int alinements_ = 64;
     using Value = llvm::Value;
     using Function = llvm::Function;
@@ -80,18 +80,12 @@ class LLVMCodeGen {
     llvm::Type*  t_float_vec_ptr_;
 
     llvm::Type* t_int8_vec_ptr_;
-    llvm::Type* t_int_vec4_;
-    llvm::Type*  t_double_vec4_;
     llvm::Type* t_void_;
     llvm::Type* t_int_vec_p_;
 
     llvm::Type* t_int64_vec_p_;
     llvm::Type* t_int_dvec_p_;
     llvm::Type*  t_double_vec_p_;
-    llvm::Type* t_int_vec4_p_;
-    llvm::Type*  t_double_vec4_p_;
-
-    llvm::Type* t_double_ptr_vec4_;
     llvm::Type* t_int_ptr_vec_ ;
     llvm::Type*  t_double_ptr_vec_;
 
@@ -106,7 +100,7 @@ class LLVMCodeGen {
     llvm::Constant *DZero_ ;
     llvm::Constant *One_ ;
 
-    llvm::Constant * CONST_INDEX_NUM_[VECTOR];
+//    llvm::Constant * CONST_INDEX_NUM_[VECTOR];
     llvm::Constant *True_;
 
     llvm::Constant * true_vec_value_ ;
@@ -136,7 +130,7 @@ class LLVMCodeGen {
     template<typename T> 
     void init_vec( llvm::Value * &vec, const void * data_arg, const int lanes,llvm::Type* llvm_type ) ;
 
-    LLVMCodeGen() ;
+    LLVMCodeGen(const int) ;
 
     Value* CodeGen_(StateMent * stat ) ;
 
@@ -183,7 +177,7 @@ class LLVMCodeGen {
 
     Value * CodeGen_(Mul * stat) ;
 
-    Value * CodeGen_( ComplexReduce * stat) ;
+//    Value * CodeGen_( ComplexReduce * stat) ;
 
     Value * CodeGen_( DetectConflict * stat) ;
 

@@ -12,6 +12,8 @@ class Type {
     int lanes_;
     Type * pointer2type_;
     public:
+
+    static void init_type(const int vector);
     Type( Type * pointer2type, int lanes ) : data_type_(PTR),lanes_(lanes),pointer2type_(pointer2type) {
     }
     Type(DataType data_type,  int lanes ) : data_type_(data_type),lanes_(lanes){ 

@@ -42,7 +42,7 @@ Type __int8_v8_ptr = Type(&__int8_v8, NOT_VEC);
 
 Type __int64_v8_ptr = Type(&__int64_v8, NOT_VEC);
 
-Type __double_pointer_v8 = Type( &__double, VECTOR8 );
+Type __double_ptr_v8 = Type( &__double, VECTOR8 );
 Type __float_ptr_v8 = Type( &__float, VECTOR8 );
 Type __int_ptr_v8 = Type( &__int, VECTOR8 );
 Type __int8_ptr_v8 = Type( &__int8, VECTOR8 );
@@ -61,47 +61,32 @@ Type __int_ptr_v16 = Type( &__int, VECTOR16 );
 Type __int8_ptr_v16 = Type( &__int8, VECTOR16 );
 Type __int_v16_ptr = Type( &__int_v16, NOT_VEC );
 Type __int8_v16_ptr = Type( &__int8_v16, NOT_VEC );
+ Type __float_v;
+ Type __float_v_ptr;
+ Type __double_ptr_v ;
 
-Type __float_v = __float_v16;
-Type __float_v_ptr = __float_v16_ptr;
-Type __double_ptr_v = __double_pointer_v8;
+ Type __double_v;
+ Type __bool_v ;
+ Type __int_v ;
+ Type __int64_v ;
 
-#if VECTOR == VECTOR8
-Type __double_v = __double_v8;
-Type __bool_v = __bool_v8;
-Type __int_v = __int_v8;
+ Type __int_dv ;
+ Type __int8_v;
 
-Type __int_dv = __int_v16;
-Type __int8_v = __int8_v8;
 
-Type __int64_v = __int64_v8;
-Type __double_v_ptr = __double_v8_pointer;
-Type __int_v_ptr = __int_v8_ptr;
+ Type __double_v_ptr;
+ Type __int_v_ptr;
+ Type __int_dv_ptr;
+ Type __float_ptr_v ;
 
-Type __int_dv_ptr = __int_v16_ptr;
-Type __int8_v_ptr = __int8_v8_ptr;
+ Type __int8_ptr_v ;
+ Type __int8_v_ptr;
 
-Type __int64_v_ptr = __int64_v8_ptr;
-Type __float_ptr_v = __float_ptr_v8;
+ Type __int64_v_ptr;
+ Type __int_ptr_v;
+ 
 
-Type __int_ptr_v = __int_ptr_v8;
-Type __int8_ptr_v = __int8_ptr_v8;
 
-#elif VECTOR == VECTOR16
-Type __double_v = __double_v8;
-Type __bool_v = __bool_v16;
-Type __int_v = __int_v16;
-Type __int8_v = __int8_v16;
-
-Type __double_v_ptr = __double_v8_pointer;
-Type __int_v_ptr = __int_v16_ptr;
-Type __int8_v_ptr = __int8_v16_ptr;
-
-Type __float_ptr_v = __float_ptr_v16;
-
-Type __int_ptr_v = __int_ptr_v16;
-Type __int8_ptr_v = __int8_ptr_v16;
-#endif
 Type type_scalar_ptr2vector_ptr( const Type type ) {
     Type ret_type;
     if(type == __int_ptr) {
@@ -128,6 +113,45 @@ Type type_scalar_ptr2ptr_vector( const Type type ) {
     }
     return ret_type;
 }
+void Type::init_type(const int vector) {
+    if(vector == VECTOR8) {
+         __double_v = __double_v8;
+         __bool_v = __bool_v8;
+         __int_v = __int_v8;
+         __double_ptr_v = __double_ptr_v8;
+         __int_dv = __int_v16;
+         __int8_v = __int8_v8;
 
+         __int64_v = __int64_v8;
+         __double_v_ptr = __double_v8_pointer;
+         __int_v_ptr = __int_v8_ptr;
+
+         __int_dv_ptr = __int_v16_ptr;
+         __int8_v_ptr = __int8_v8_ptr;
+
+         __int64_v_ptr = __int64_v8_ptr;
+         __float_ptr_v = __float_ptr_v8;
+
+         __int_ptr_v = __int_ptr_v8;
+         __int8_ptr_v = __int8_ptr_v8;
+   
+    } else if(vector == VECTOR16) {
+        __double_v = __double_v8;
+        __bool_v = __bool_v16;
+        __int_v = __int_v16;
+        __int8_v = __int8_v16;
+
+        __double_v_ptr = __double_v8_pointer;
+        __int_v_ptr = __int_v16_ptr;
+        __int8_v_ptr = __int8_v16_ptr;
+
+        __float_ptr_v = __float_ptr_v16;
+
+        __int_ptr_v = __int_ptr_v16;
+        __int8_ptr_v = __int8_ptr_v16; 
+    } else {
+        LOG(FATAL) << "Unsupported";
+    }
+}
 
 

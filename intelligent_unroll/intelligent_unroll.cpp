@@ -15,7 +15,7 @@ class IntelligentUnroll{
     std::set<std::string> iterates_set_;
     
     Node * root_node_ptr_;
-
+    int vector_;
     /////produced by generate information    
     std::map<std::string,GatherInfo*> gather_map_;
     std::map<std::string,ScatterInfo*> scatter_map_;
@@ -52,7 +52,7 @@ class IntelligentUnroll{
     uint64_t compiler( const std::string & expr_str,  std::map<std::string,void*> & name2ptr_map  ,int table_column_num) {
 
         ////////////parse the expression, get a node tree
-        parse_expression( 
+        vector_ = parse_expression( 
                           expr_str,
                           root_node_ptr_,
                           gather_set_,
@@ -65,6 +65,7 @@ class IntelligentUnroll{
                           output_name_
                           );
 
+        Type::init_type( vector_ );
         LOG(INFO) << "parse expression finished";
         ///////////generate information
         generate_information( 
@@ -77,7 +78,8 @@ class IntelligentUnroll{
                 scatter_map_,
                 reduction_map_,
                 same_feature_map_,
-                same_feature_range_map_  );
+                same_feature_range_map_ ,
+                vector_);
         LOG(INFO) << "generate information finished";
         ///////////transform data
         transform_data( name_type_map_,
@@ -95,7 +97,8 @@ class IntelligentUnroll{
                         reduction_name_new_ptr_map_,
                         scatter_name_new_ptr_map_,
                         name_new_ptr_map_,
-                        table_column_num
+                        table_column_num,
+                        vector_
         ); 
 
         LOG(INFO) << "transform data finished";
@@ -119,7 +122,8 @@ class IntelligentUnroll{
                 func_init_state_vec_,
                 calculate_state_,
                 func_state_ptr_,
-                root_node_ptr_
+                root_node_ptr_,
+                vector_
                 );
         LOG(INFO) << root_node_ptr_;
         LOG(INFO) << "node tree 2 statement finished";
@@ -144,7 +148,8 @@ class IntelligentUnroll{
                 same_feature_map_,
                 same_feature_range_map_,
                 output_name_,
-                calculate_state_
+                calculate_state_,
+                vector_
         );
 
         LOG(INFO) << "optimize statement finished";
@@ -156,7 +161,7 @@ class IntelligentUnroll{
          
         LOG(INFO) << "merge state finished";
         /////////// 
-        LLVMCodeGen codegen;
+        LLVMCodeGen codegen = LLVMCodeGen( vector_ );
         codegen.AddFunction( func_state_ptr_ );
 
         LOG(INFO) << "add function finished";

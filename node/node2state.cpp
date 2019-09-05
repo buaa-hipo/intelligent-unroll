@@ -29,6 +29,7 @@ class Node2StateMent{
     std::map<std::string, Varience*>  &name_new_var_map_;
     std::vector<StateMent *> &func_init_state_vec_;
     FuncStatement * &func_state_ptr_;
+    const int vector_;
     Node2StateMent(
         const std::string & output_name,
         const std::vector<std::string> &input_var_vec,
@@ -48,7 +49,8 @@ class Node2StateMent{
         std::map<std::string, Varience*>  &scatter_name_new_var_map,
         std::map<std::string, Varience*>  &name_new_var_map,
         std::vector<StateMent *> &func_init_state_vec,
-        FuncStatement * & func_state_ptr
+        FuncStatement * & func_state_ptr,
+        const int vector
         ) :
         output_name_(output_name),
         input_name_vec_(input_var_vec),
@@ -66,7 +68,8 @@ class Node2StateMent{
         scatter_name_new_var_map_(scatter_name_new_var_map),
         name_new_var_map_(name_new_var_map),
         func_init_state_vec_(func_init_state_vec),
-        func_state_ptr_(func_state_ptr)
+        func_state_ptr_(func_state_ptr),
+        vector_(vector)
     {
     }
 
@@ -98,12 +101,13 @@ class Node2StateMent{
             
             Varience * name_varP_varVP_var= new Varience( type_scalar_ptr2vector_ptr(   arg_var_tmp->get_type()) , node_name);
 
-                
+            LOG(INFO) << arg_var_tmp->get_type();
+            LOG(INFO) << type_scalar_ptr2ptr_vector(   arg_var_tmp->get_type());
             Varience * name_varP_varPV_var = new Varience( type_scalar_ptr2ptr_vector(   arg_var_tmp->get_type()), node_name );
 
             func_init_state_vec_.push_back( LetStat::make( name_varP_varVP_var ,BitCast::make( arg_var_tmp, name_varP_varVP_var->get_type() ) ));
 
-            func_init_state_vec_.push_back( LetStat::make( name_varP_varPV_var ,BroadCast::make( arg_var_tmp ) ));
+            func_init_state_vec_.push_back( LetStat::make( name_varP_varPV_var ,BroadCast::make( arg_var_tmp ,vector_ )));
 
             name_varP_varVP_map_[ name_vec_tmp[i] ] = name_varP_varVP_var;
 
@@ -349,7 +353,8 @@ void node_tree2state(
         std::vector<StateMent *> &func_init_state_vec,
         StateMent * & calculate_state,
         FuncStatement * &func_state_ptr,
-         Node * node_ptr
+         Node * node_ptr,
+         const int vector
         ) {
         Node2StateMent node2state = Node2StateMent(
                 output_name,
@@ -368,7 +373,8 @@ void node_tree2state(
                 scatter_name_new_var_map,
                 name_new_var_map,
                 func_init_state_vec,
-                func_state_ptr
+                func_state_ptr,
+                vector
                 );
         node2state.generate_func();
         LOG(INFO) << "function generated";

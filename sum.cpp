@@ -122,6 +122,7 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "x_array" ] = x_array;
     name2ptr_map[ "data_ptr" ] = data_ptr;
     name2ptr_map[ "y_array" ] = y_array;
+    #define VECTOR 8
     LOG(INFO) << data_num/VECTOR;
     uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/VECTOR );
     using FuncType = int(*)( double*,int*,int*,double*,double*);

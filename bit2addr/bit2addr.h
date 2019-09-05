@@ -10,7 +10,7 @@ typedef  struct TransAddr {
 }TransAddr ,  *TransAddrPtr ;
 typedef struct CompressAddr{
     MASK mask_;
-    int compress_vec[VECTOR];  
+    int compress_vec[VECTOR_MAX];  
 }CompressAddr;
 
 class Bit2Addr{
@@ -18,7 +18,7 @@ class Bit2Addr{
     public:
     int vector_;
     TransAddr trans_addr_;
-    Bit2Addr( int vector ) : vector_(vector) {}
+    explicit Bit2Addr( int vector ) : vector_(vector) {}
     int get_max_len( const int mask ) ;
     friend std::ostream & operator << ( std::ostream & stream , const Bit2Addr& para ) ;
     TransAddr generate( int mask ) ;

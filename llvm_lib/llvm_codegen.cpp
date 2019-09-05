@@ -9,9 +9,9 @@
     }
     llvm::Type * LLVMCodeGen::Type2LLVMType(const Type & type) {
         if( type == __int_v ) { 
-            return llvm::VectorType::get( t_int_,VECTOR ); 
+            return llvm::VectorType::get( t_int_,vector_ ); 
         } else if( type == __double_v ){
-            return llvm::VectorType::get( t_double_, VECTOR );
+            return llvm::VectorType::get( t_double_, vector_ );
         } else if( type == __int ) {
             return t_int_;
         } else if( type == __double ) {
@@ -72,7 +72,7 @@
         }
     }
 
-LLVMCodeGen::LLVMCodeGen() {
+LLVMCodeGen::LLVMCodeGen(const int vector):vector_(vector) {
 
         ctx_ptr_ = llvm::make_unique<llvm::LLVMContext>();
         mod_ptr_= llvm::make_unique<llvm::Module>("module",*ctx_ptr_);
@@ -104,9 +104,9 @@ LLVMCodeGen::LLVMCodeGen() {
 
         t_float_ptr_ = t_float_->getPointerTo(); 
 
-        t_float_vec_ = llvm::VectorType::get( t_float_, lanes_ );
+        t_float_vec_ = llvm::VectorType::get( t_float_, vector_ );
 
-        t_float_ptr_vec_ = llvm::VectorType::get( t_float_ptr_, lanes_ );
+        t_float_ptr_vec_ = llvm::VectorType::get( t_float_ptr_, vector_ );
 
         t_float_vec_ptr_ = t_float_vec_->getPointerTo();
 
@@ -119,18 +119,16 @@ LLVMCodeGen::LLVMCodeGen() {
         t_double_p_ =  t_double_->getPointerTo();
 
         t_int64_p_p_ = t_int64_p_->getPointerTo();
-        t_int_dvec_ = llvm::VectorType::get( t_int_, lanes_ * 2);
-        t_int_vec_ = llvm::VectorType::get( t_int_, lanes_);
-        t_int64_vec_ = llvm::VectorType::get( t_int64_, lanes_ );
-        t_bool_vec_ = llvm::VectorType::get( t_bool_, lanes_ );
+        t_int_dvec_ = llvm::VectorType::get( t_int_, vector_ * 2);
+        t_int_vec_ = llvm::VectorType::get( t_int_, vector_);
+        t_int64_vec_ = llvm::VectorType::get( t_int64_, vector_ );
+        t_bool_vec_ = llvm::VectorType::get( t_bool_, vector_ );
 
-	    t_int8_vec_ = llvm::VectorType::get( t_int8_, lanes_ );
-        t_double_vec_ = llvm::VectorType::get( t_double_, lanes_ );
-        t_double_vec4_ = llvm::VectorType::get(t_double_,VECTOR4);
-        t_int_vec4_ = llvm::VectorType::get(t_int_, VECTOR4);
+	    t_int8_vec_ = llvm::VectorType::get( t_int8_, vector_ );
+        t_double_vec_ = llvm::VectorType::get( t_double_, vector_ );
 
-        t_double_vec4_p_ = t_double_vec4_->getPointerTo();
-        t_int_vec4_p_ = t_int_vec4_->getPointerTo();
+        //t_double_vec4_p_ = t_double_vec4_->getPointerTo();
+//        t_int_vec4_p_ = t_int_vec4_->getPointerTo();
 
 	    t_int8_vec_ptr_ = t_int8_vec_->getPointerTo();
         t_int_vec_p_ = t_int_vec_->getPointerTo();
@@ -139,33 +137,32 @@ LLVMCodeGen::LLVMCodeGen() {
         t_int_dvec_p_ = t_int_dvec_->getPointerTo();
 	    t_double_vec_p_ = t_double_vec_->getPointerTo();
 
-    	t_int_ptr_vec_ = llvm::VectorType::get(t_int_p_,lanes_);
-    	t_double_ptr_vec_ = llvm::VectorType::get(t_double_p_,lanes_);
+    	t_int_ptr_vec_ = llvm::VectorType::get(t_int_p_,vector_);
+    	t_double_ptr_vec_ = llvm::VectorType::get(t_double_p_,vector_);
 
-    	t_double_ptr_vec4_ = llvm::VectorType::get(t_double_p_,VECTOR4);
         
         Zero_ = llvm::ConstantInt::get( t_int_ , 0);
 
         SixTeen_ = llvm::ConstantInt::get( t_int_ , 16);
 
-        ZeroVec_ = llvm::ConstantVector::getSplat( lanes_, Zero_);
+        ZeroVec_ = llvm::ConstantVector::getSplat( vector_, Zero_);
 
-        SixTeenVec_ = llvm::ConstantVector::getSplat( lanes_, SixTeen_);
+        SixTeenVec_ = llvm::ConstantVector::getSplat( vector_, SixTeen_);
         FZero_ = llvm::ConstantFP::get( t_float_ , 0);
 
-        FZeroVec_ = llvm::ConstantVector::getSplat( lanes_, FZero_);
+        FZeroVec_ = llvm::ConstantVector::getSplat( vector_, FZero_);
         DZero_ = llvm::ConstantFP::get( t_double_ , 0);
 
-        DZeroVec_ = llvm::ConstantVector::getSplat( lanes_, DZero_);
+        DZeroVec_ = llvm::ConstantVector::getSplat( vector_, DZero_);
 
         FFFF_ = llvm::ConstantInt::get( t_int16_ , 0xffff);
         One_ = llvm::ConstantInt::get( t_int_ , 1);
         //FOne_ = llvm::ConstantFP::get( t_double_ , 1);
         True_ = llvm::ConstantInt::get( t_bool_ , 1);
-        true_vec_value_ = llvm::ConstantVector::getSplat(lanes_,True_);
-        for( int i = 0 ; i < VECTOR ; i++ ) {
-            CONST_INDEX_NUM_[i ] = llvm::ConstantInt::get( t_int_ , i );
-        }
+        true_vec_value_ = llvm::ConstantVector::getSplat(vector_,True_);
+//        for( int i = 0 ; i < vector_ ; i++ ) {
+            //CONST_INDEX_NUM_[i ] = llvm::ConstantInt::get( t_int_ , i );
+//        }
         Null_ = llvm::Constant::getNullValue( t_int_ );
 }
     llvm::Value* LLVMCodeGen::CodeGen_(StateMent * stat ) {
@@ -196,12 +193,12 @@ llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
         } else if( type == __double ) {
             LLVMPrintDOUBLE( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value);
         } else if( type == __double_v ) {
-            for( int i = 0 ; i < VECTOR; i++ ) {
+            for( int i = 0 ; i < vector_; i++ ) {
                 llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
                 LLVMPrintDOUBLE( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
             }
         } else if( type == __int_v ) {
-            for( int i = 0 ; i < VECTOR; i++ ) {
+            for( int i = 0 ; i < vector_; i++ ) {
                 llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
                 LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
             }
@@ -444,13 +441,19 @@ llvm::Value * LLVMCodeGen::CodeGen_(Load * stat) {
 
         llvm::Value * mask_value = CodeGen( stat->get_mask());
         if( !mask_value->getType()->isVectorTy()) {
-            if(VECTOR == VECTOR8) {
+            if(vector_ == VECTOR8) {
                 
                 if( mask_value->getType()->getIntegerBitWidth() != VECTOR8) 
                     mask_value = build_ptr_->CreateIntCast( mask_value, t_int8_, false );
         
                 mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
 
+            } else if( vector_ == VECTOR16 ){
+                 if( mask_value->getType()->getIntegerBitWidth() != VECTOR16) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int16_, false );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+               
             } else {
                 LOG(FATAL) << "Unsupported";
             }
@@ -486,10 +489,16 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
 
         llvm::Value * mask_value = CodeGen( stat->get_mask() );
         if( !mask_value->getType()->isVectorTy()) {
-            if(VECTOR == VECTOR8) {
+            if( vector_ == VECTOR8) {
                 
                 if( mask_value->getType()->getIntegerBitWidth() != VECTOR8) 
                     mask_value = build_ptr_->CreateIntCast( mask_value, t_int8_, (bool)0 );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+
+            } else if(vector_ == VECTOR16) { 
+                if( mask_value->getType()->getIntegerBitWidth() != VECTOR16) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int16_, (bool)0 );
         
                 mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
 
@@ -657,13 +666,13 @@ llvm::Value * LLVMCodeGen::CodeGen_(Mul * stat) {
         }
         return Null_;
     }
-llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
+/*llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
     llvm::Value * v1 = CodeGen( stat->get_v1() );
 //    const Type & type = stat->get_v1()->get_type();
 //    const int lanes = type.get_lanes();
 //    llvm::Value * index = CodeGen( stat->get_index() );
     int mask = stat->get_mask();
-    if(VECTOR == VECTOR16) {
+    if(vector_ == VECTOR16) {
         llvm::Value * shuffle_index_ptr = CodeGen(stat->get_shuffle_index_ptr());
         for( int i = 0 ; i < mask ; i++ ) {
             llvm::Value * addr = build_ptr_->CreateInBoundsGEP( shuffle_index_ptr , CONST_INDEX_NUM_[i] );
@@ -677,8 +686,7 @@ llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
             llvm::Value * equal_sixteen = build_ptr_->CreateICmpEQ( index_ext, SixTeenVec_);
             shuffle_data = build_ptr_->CreateSelect( equal_sixteen, FZeroVec_, shuffle_data );
             v1 = build_ptr_->CreateFAdd( shuffle_data, v1 );
-
-        }
+        }*/
 /*    #define VREDUCE_ELEM(NUM) \
         llvm::Value * tmp = build_ptr_->CreateExtractElement( index ,CONST_INDEX_NUM_[(NUM)]); \
         llvm::Value * index_vec = LLVMBroadCast( tmp, lanes ); \
@@ -739,13 +747,13 @@ llvm::Value * LLVMCodeGen::CodeGen_( ComplexReduce * stat) {
         if( ( mask&0x8000 ) ) {
             VREDUCE_ELEM(15);
         }
-    }*/
+    }*//*
         return v1;
     } else {
         LOG(FATAL) <<"Unsupported";
     }
     return Null_;
-}
+}*/
 llvm::Value * LLVMCodeGen::CodeGen_(InsertElement * stat) {
 
     llvm::Value * to_value = CodeGen(stat->get_to());    
@@ -806,7 +814,7 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
             SET_DISPATCH(Minus);
             SET_DISPATCH(BroadCast);
 
-            SET_DISPATCH(ComplexReduce);
+//            SET_DISPATCH(ComplexReduce);
             SET_DISPATCH(DetectConflict);
             SET_DISPATCH(Print);
             SET_DISPATCH(ExtractElement );

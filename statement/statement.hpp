@@ -825,17 +825,17 @@ class BroadCast : public Expr {
 
     protected:
 
-    BroadCast( StateMent * v1 ) : v1_(v1){
+    BroadCast( StateMent * v1 ,const int vector) : v1_(v1){
 
         Type &  type_ptr_tmp = v1_->get_type();
         type_ = type_ptr_tmp;
-        type_.set_lanes(VECTOR);
+        type_.set_lanes(vector);
 
     }
     public:
     static constexpr const char* class_name_ = "broadcast";
-    static StateMent * make( StateMent * v1 ) {
-        StateMent * stat_ptr = new BroadCast( v1 );
+    static StateMent * make( StateMent * v1, const int vector ) {
+        StateMent * stat_ptr = new BroadCast( v1,vector );
         return stat_ptr;
     }
     virtual std::string get_class_name() {

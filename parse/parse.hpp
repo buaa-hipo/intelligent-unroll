@@ -68,7 +68,7 @@ VarType GetBasicType( VarType var_type) {
 }
 */
 
-void parse_expression( 
+int parse_expression( 
         const std::string &expr_str,
         Node * &root_node_ptr,
         std::set<std::string> &gather_set,
