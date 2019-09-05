@@ -36,7 +36,8 @@ class TransformData {
         return i; \
     } \
     TYPE * malloc_new_data( TYPE * data_ptr ) { \
-        TYPE * new_data_ptr = ( TYPE* )malloc(sizeof( TYPE ) * table_column_num_ * VECTOR);\
+        TYPE * new_data_ptr = new TYPE[ table_column_num_ * VECTOR];\
+        if(new_data_ptr == NULL) LOG(FATAL)  << "malloc failed";\
         return new_data_ptr;\
     }
 
@@ -54,7 +55,11 @@ class TransformData {
                             i++;
                         }
                     }
-                } 
+                } else if(reduction_info_tmp.order_type_ == IncContinue || reduction_info_tmp.order_type_ == OrderEquel){
+                    
+                } else {
+                    LOG(FATAL) << "Unsupported";
+                }
             return i;
     }
     int * malloc_new_data( ReductionInfo * data_ptr ) {
@@ -231,7 +236,6 @@ public:
         for( const auto & same_feature_it : same_feature_map_ ) {
             const std::vector<int> & vec_tmp = same_feature_it.second;
             for( auto index : vec_tmp ) {
-                 
                 i = rearrange_elem( index, data_ptr, i, new_data_ptr) ;
             }
         }
@@ -279,7 +283,7 @@ public:
             }
             name_new_ptr_map_[ data_name ] = data_new;
         }
-
+        LOG(INFO) ;
             for( auto scatter_index : scatter_set_ ) {
                 auto scatter_info_it = scatter_map_.find( scatter_index );
                 CHECK(scatter_info_it != scatter_map_.end()) << "Can not find "<<scatter_index;
@@ -293,6 +297,7 @@ public:
                     gather_name_new_ptr_map_[scatter_index] = rearrange_scatter_data;
                 }
             }
+
             for( auto gather_index : gather_set_ ) {
 
                 auto gather_info_it = gather_map_.find( gather_index );

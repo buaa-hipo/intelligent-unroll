@@ -89,8 +89,8 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
 //    init_vec(x_array,column_num,1);
 
+//    init_vec( x_array, column_num , 1 ,true);
     init_vec( x_array, column_num , 1 ,true);
-    //init_vec( x_array, column_num , 1 ,true);
 
     //init_vec(x_array,column_num,1);
     init_vec( y_array, row_num , 0 );
@@ -122,6 +122,7 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "x_array" ] = x_array;
     name2ptr_map[ "data_ptr" ] = data_ptr;
     name2ptr_map[ "y_array" ] = y_array;
+    LOG(INFO) << data_num/VECTOR;
     uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/VECTOR );
     using FuncType = int(*)( double*,int*,int*,double*,double*);
     FuncType func = (FuncType)(func_int64);
@@ -133,16 +134,32 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("aot");
     
     func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
-     for( int i = 0 ; i < 50 ; i++ )
+    LOG(INFO) << data_num / VECTOR * VECTOR;
+    for( int i = (data_num / VECTOR * VECTOR) ; i < data_num ; i++ ) {
+        y_array[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+    }
+     for( int i = 0 ; i < 50 ; i++ ) {
         func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
 
-#define TIMES 100
+            y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+        }
+     }
+
+#define TIMES 1000
     Timer::startTimer("jit");
-     for( int i = 0 ; i < TIMES ; i++ )
+     for( int i = 0 ; i < TIMES ; i++ ){
         func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
+        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
+
+            y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+        }
+
+     }
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
+    Timer::printGFLOPS( "jit", data_num * 2 , TIMES );
     if(!check_equal( y_array_bak, y_array, row_num )) {
         return 1;
     }

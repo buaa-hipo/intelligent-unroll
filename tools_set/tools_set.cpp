@@ -104,9 +104,11 @@ ScatterInfo generate_disorder_info_elem(const int * elem_addr ) {
     } else if(dec_continue_num + equal_num == VECTOR - 1) {
         ot = DecContinue;
     } else if( inc_num + equal_num == VECTOR - 1) {
-        ot = Inc;
+//        ot = Inc;
+         ot = DisOrder;
     } else if( dec_num + equal_num == VECTOR - 1) {
-        ot =  Dec;
+//        ot =  Dec;
+         ot = DisOrder;
     } else {
         ot = DisOrder;
     }
@@ -145,7 +147,7 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
     } else if( order_type == DisOrder ) {
         scatter_info = generate_disorder_info_elem( index_ptr );
     } else {
-        LOG(FATAL) << "Unsupported"; 
+        LOG(FATAL) << "Unsupported" << order_type; 
     }
     return scatter_info;
 }
@@ -158,7 +160,7 @@ ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterIn
          reduction_info.order_type_ = scatter_info.order_type_; 
          reduction_info.mask_ = scatter_info.mask_;
     } else {
-        LOG(FATAL) << "Unsupported Now" << scatter_info.order_type_;
+        LOG(FATAL) << "Unsupported Now" << scatter_info ;
     }
     return reduction_info;
 }
@@ -220,48 +222,50 @@ void combin_same_feature_together( std::unordered_map<size_t, std::vector<int>> 
     }
 }
 void combin_same_write_pattern_together_elem( std::vector<std::pair<int,int>> &same_write_range , std::vector<int> & index_vec,const ScatterInfo * info_ptr ) {
-    const int index_vec_size = index_vec.size();
+    const unsigned int index_vec_size = index_vec.size();
+    std::vector<int> new_index_vec; 
     if(index_vec.size() == 0 ) {
         return;
     }
     const ScatterInfo & scatter_info = info_ptr[index_vec[0]];
     if( scatter_info.order_type_ == OrderEquel ) {
-        int old_write_local = scatter_info.data_index_[0];  
-        int old_write_local_index = 0;
-        int j = 0;
-        int write_local = old_write_local;
-        for( int i = 1; i < index_vec_size ; i++ ) {
-            const ScatterInfo & scatter_info_tmp = info_ptr[index_vec[i]];
-            write_local = scatter_info_tmp.data_index_[0];
-            if(write_local == old_write_local) {
-            
-            } else {
-                if( old_write_local_index + 1 < i ) {
-                    same_write_range.push_back( std::pair<int,int>(old_write_local_index, i  ) ); 
-                } else {
-                    index_vec[ j ] = old_write_local;
-
-                    j++;
+        std::vector<int> range_vec;
+        for( unsigned int i = 0 ; i < index_vec_size ; ) {
+            int len = 1;
+            int cur_index = index_vec[i];
+            int cur_write_local = info_ptr[cur_index].data_index_[0];
+            unsigned int j = i + 1;
+            int cur_index_tmp;
+            for(  ; j < index_vec_size ; j++ ) {
+                cur_index_tmp = index_vec[j];
+                int cur_write_local_tmp = info_ptr[cur_index_tmp].data_index_[0];
+                if( cur_write_local_tmp == cur_write_local && cur_index_tmp == cur_index + 1 ){ 
+                    len++;
+                    cur_index = cur_index_tmp;
                 }
-                old_write_local_index = i;
-                old_write_local = write_local;;
+                else
+                    break;
             }
+            i = j;
+            range_vec.push_back( len );
+        }
+        int begin_index = 0;
+        for( auto range : range_vec ) {
+            if(range == 1) {
+                new_index_vec.push_back(index_vec[ begin_index ]);
+
+            } else { 
+                same_write_range.push_back( std::pair<int,int>(index_vec[begin_index], index_vec[begin_index+range-1] + 1  ) );
+            }
+            begin_index += range;
         }
 
-        if( write_local == old_write_local ) {
-            if( old_write_local_index + 1 != index_vec_size ) {
-                same_write_range.push_back( std::pair<int,int>(old_write_local_index,  index_vec_size ) ); 
-            } else {
-                index_vec[ j ] = old_write_local;
-                j++;
-            }   
-        } else {
-            LOG(FATAL) << "This condition never happend";
+        if( new_index_vec.size() != index_vec_size) {
+              for(unsigned int i = 0 ; i < new_index_vec.size(); i++ )
+                  index_vec[i] = new_index_vec[i];
+              index_vec.erase( index_vec.begin() + new_index_vec.size() , index_vec.end() );
+//            index_vec.swap( new_index_vec );
         }
-        if( j != index_vec_size) {
-            index_vec.erase( index_vec.begin() + j , index_vec.begin() + index_vec_size); 
-        } 
-
     }
 }
 
@@ -278,8 +282,6 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
                 erase_vec.push_back(it.first);
           }
     }
-    for( auto it : erase_vec )
-        same_feature_map.erase( it );
 }
 
 
@@ -300,7 +302,6 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
         std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map
         ) {
         //////Init feature table
-        LOG(INFO) << table_column_num;
         std::string output_name;
         for( const auto & scatter_index : scatter_set ) {
             output_name = scatter_index;
@@ -329,7 +330,6 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
 
             gather_map[ gather_index ] = gather_info_tmp;
         }
-        LOG(INFO) << table_column_num;
         /////////////////
         size_t * hash_table = get_feature_hash(  gather_map,scatter_map,reduction_map,table_column_num );
         /////////////////combin same feature

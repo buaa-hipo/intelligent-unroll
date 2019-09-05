@@ -90,6 +90,20 @@
             }
         }
     }
+    void Timer::printGFLOPS( string in , const int calculate_num , const int count_outer ) {
+         if(_OpenTimer) {
+             map<string,double>::iterator it = timeSum.find(in);
+
+            if(it==timeSum.end()) {
+                std::cout<<"there is no Timer "<<in<<std::endl;
+            }
+            else{
+                std::cout<< it->first <<" GFLOPS: "<<(double)(calculate_num) * 1.0 * count_outer / (it->second * 1e6 * count[it->first]  )
+                    <<" count: "<<count[it->first]<<std::endl;
+            }
+        }
+    }
+
     void Timer::printGFLOPS( string in , const int calculate_num ) {
          if(_OpenTimer) {
              map<string,double>::iterator it = timeSum.find(in);
@@ -98,10 +112,7 @@
                 std::cout<<"there is no Timer "<<in<<std::endl;
             }
             else{
-                #define K (1000)
-                #define M (K * K)
-                #define G (M * K)
-                std::cout<< it->first <<" GFLOPS: "<<calculate_num / (it->second *G * count[it->first])
+                std::cout<< it->first <<" GFLOPS: "<<calculate_num / (it->second * 1e6 * count[it->first])
                     <<" count: "<<count[it->first]<<std::endl;
             }
         }

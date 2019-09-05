@@ -619,6 +619,7 @@ StateMent * optimization_state(
        Varience * range_num_var = new Varience(__int_ptr,false);
        state_vec.push_back( LetStat::make(range_num_var, BitCast::make(range_num_const,__int_ptr)));  
        /////////////////////////
+
        for( const auto & it : same_feature_range_map ) {
             const std::vector<std::pair<int,int>> & index_vec = it.second;
             const int index_vec_num = index_vec.size();
@@ -644,6 +645,7 @@ StateMent * optimization_state(
 
             state_vec.push_back(redirect_opt_state);
        }
+       
        }
        StateMent * final_stat = CombinStatVec(state_vec);
        return final_stat;

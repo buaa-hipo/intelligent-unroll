@@ -51,6 +51,8 @@ class Timer
         static void closeTimer();
         static void printTimer_asm(string in) ;
         static void printGFLOPS( string in , const int calculate_num ) ;
+
+        static void printGFLOPS( string in , const int calculate_num ,const int count_outer) ;
         template<typename DTYPE>
         static void Vector_Variance(DTYPE * vector, DTYPE * vector_compare, int size ) {
 
