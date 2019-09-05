@@ -136,12 +136,17 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
 
                     load_index = new Varience( __int );
 
-                    permulation_addr = new Varience( __int64 );
                     gather_state_vec.push_back( LetStat::make( load_index , Load::make( gather_info_var ) ));
                     gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(1) ) )); 
                     //warning 
-                    gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __int64_ptr )) ));
-                    gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(2) ) ));
+                    //
+                    if(VECTOR == VECTOR8) {
+                        permulation_addr = new Varience( __int64 );
+                        gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __int64_ptr )) ));
+                        gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(2) ) ));
+                    } else {
+                        LOG(FATAL) << "Unsupported";
+                    }
                     gather_scatter_has_load_info_index_[ index_name ] = load_index;
                     gather_scatter_has_load_info_shuffle_[index_name] = permulation_addr;
                 } else {
@@ -269,6 +274,9 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
  //           Varience * shuffle_res = new Varience(v2_state_new->get_type()); 
 //            StateMent * add_new_state = LetStat::make( shuffle_res, v2_state_new);
             ReductionInfo reduction_info = (reduction_map_it->second)[index_];
+            
+            const auto & reduction_name_new_var_map_it = reduction_name_new_var_map_.find( index_name );
+            Varience * reduction_info_var = const_cast<Varience*>(reduction_name_new_var_map_it->second);
             if(reduction_info.order_type_ == IncContinue) {
                 int mask = reduction_info.mask_&VEC_MASK;
                 Bit2Addr bit2addr(VECTOR);
@@ -304,10 +312,32 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
                  reduce_state_vec.push_back(Add::make( v1_state_new, shuffle_res)) ;
                  return CombinStatVec(reduce_state_vec);
             } else if(reduction_info.order_type_ == OrderEquel) {
-
+                    
                  StateMent * ret = Add::make(v1_state_new,Reduce::make( v2_state_new)) ;
                  return ret;
                  
+            } else if( reduction_info.order_type_ == DisOrder ){
+                const int reduce_num = reduction_info.get_mask() & VEC_MASK ;
+                Varience *shuffle_res = new Varience( v2_state_new->get_type(),false );
+                reduce_state_vec.push_back( LetStat::make( shuffle_res ,v2_state_new ) );
+
+                for( int reduce_i = 0 ; reduce_i < reduce_num ; reduce_i++ ) {
+                    Varience * permulation_addr;
+                    if(VECTOR == VECTOR8) {
+                        permulation_addr = new Varience( __int64 );
+                        reduce_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( reduction_info_var, __int64_ptr )) ));
+                        reduce_state_vec.push_back( LetStat::make( reduction_info_var , IncAddr::make( reduction_info_var, new Const(2) ) ));
+                    } else {
+                        LOG(FATAL) << "Unsupported";
+                    }
+
+                    Varience *shuffle_simd = new Varience( v2_state_new->get_type(),false );
+                    reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res ,  permulation_addr))); 
+                    reduce_state_vec.push_back(LetStat::make( shuffle_res, Add::make( shuffle_simd, shuffle_res ) ));
+                }
+
+                reduce_state_vec.push_back(Add::make( v1_state_new, shuffle_res)) ;
+                return CombinStatVec(reduce_state_vec);
             } else {
                 LOG(FATAL) << "Unsupported";
                 return nop_;
@@ -415,6 +445,29 @@ StateMent * OptimizationPass::pass_(Scatter * stat) {
                 CHECK( addr_name_var_map_it != name_var_map_.end() );
                 scatter_state_vec.push_back(  Store::make( IncAddr::make( const_cast<Varience*>(addr_name_var_map_it->second ), load_index) , data_state)) ;
                 return CombinStatVec( scatter_state_vec );
+        } else if( scatter_info.order_type_ == DisOrder ) {
+            int mask = scatter_info.get_mask() & VEC_MASK;
+            if (mask==VECTOR) { 
+                if( gather_scatter_has_load_info_index_.find(index_name) == gather_scatter_has_load_info_index_.end() ) {
+                    load_index = new Varience( __int_v );
+
+                    scatter_state_vec.push_back( LetStat::make( load_index , Load::make( BitCast::make( scatter_info_var, type_scalar_ptr2vector_ptr(__int_ptr)) )));
+                    scatter_state_vec.push_back( LetStat::make( scatter_info_var , IncAddr::make( scatter_info_var, new Const(VECTOR) ) )); 
+                    gather_scatter_has_load_info_index_[ index_name ] = load_index;
+                } else {
+                     
+                    load_index = gather_scatter_has_load_info_index_[ index_name ];
+                }
+                const auto & name_varP_varPV_map_it = name_varP_varPV_map_.find(addr_name);
+                CHECK( name_varP_varPV_map_it != name_varP_varPV_map_.end() ) ;
+
+//                gather_state_vec.push_back( Print::make( load_index )  );
+                scatter_state_vec.push_back( Scatter::make( const_cast<Varience*>(name_varP_varPV_map_it->second),load_index,data_state ));
+                return CombinStatVec( scatter_state_vec );
+            } else {
+                LOG(FATAL) << "Unsupported";
+                return nop_;
+            }
         } else {
             LOG(FATAL)  << "Unsupported";
             return nop_;

@@ -48,7 +48,7 @@ class TransformData {
     int rearrange_elem(const int index, const ReductionInfo * data_ptr,int i,int * new_data_ptr) {
                 const ReductionInfo & reduction_info_tmp = data_ptr[ index ];
                 if( reduction_info_tmp.order_type_ == DisOrder ) {
-                    const int mask = reduction_info_tmp.get_mask();
+                    const int mask = reduction_info_tmp.get_mask() & VEC_MASK;
                     for( int mask_i = 0 ; mask_i < mask ; mask_i++ ) {
                         for( int disorder_i = 0 ; disorder_i < (VECTOR >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = reduction_info_tmp.reduction_addr_[mask_i].int_data_vec_[disorder_i];
@@ -57,25 +57,27 @@ class TransformData {
                     }
                 } else if(reduction_info_tmp.order_type_ == IncContinue || reduction_info_tmp.order_type_ == OrderEquel){
                     
-                } else {
+                } else  {
                     LOG(FATAL) << "Unsupported";
                 }
             return i;
     }
     int * malloc_new_data( ReductionInfo * data_ptr ) {
-        int disorder_gather_num = 0;
         int need_data_num = 0;
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
             if( data_ptr[i].order_type_ == DisOrder ) {
-                disorder_gather_num++;
-                const int mask = data_ptr[i].get_mask();
+                const int mask = data_ptr[i].get_mask() & VEC_MASK;
                 if( mask != VECTOR )
-                    need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                    need_data_num += sizeof( MASK ) * (VECTOR) * mask  / sizeof(int) ;            
+            } else if(data_ptr[i].order_type_ == IncContinue || data_ptr[i].order_type_ == OrderEquel)  {
+            
+            } else {
+                LOG(FATAL) << "Unsupported";
             } 
             
         }
         int * new_data_ptr = NULL;
-        if( disorder_gather_num > 0 ) 
+        if( need_data_num > 0 ) 
             new_data_ptr = ( int* )malloc(sizeof( int ) *  need_data_num );
         return new_data_ptr;
     }

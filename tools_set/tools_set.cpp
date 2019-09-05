@@ -30,9 +30,53 @@ std::ostream & operator<<( std::ostream &stream , const GatherInfo &scatter_info
             info_ptr[i] = func_ptr( addr + i * VECTOR );
         }
     }
-
-ScatterInfo generate_disorder_info_elem(const int * elem_addr ) {
+ScatterInfo generate_scatter_disorder_info_elem(const int * elem_addr ) {
     ScatterInfo scatter_info;
+    int level;
+    /*
+        DisorderAddr disorder_addr;
+        std::vector<int> column_begin_vec;
+        int column_block[VECTOR];
+        for( int v_i = 0 ; v_i < VECTOR; v_i++ ) {
+            column_block[v_i] = elem_addr[v_i];
+        }
+        int num = 0;
+        while(true) {
+            int min = INT_MAX ;
+            for( int v_i = 0 ; v_i < VECTOR ; v_i++) {
+                min = column_block[v_i] < min ? column_block[v_i] : min;
+            }
+            if( min == INT_MAX) {
+                break;
+            } else {
+                column_begin_vec.push_back( min );
+            }
+            num++;
+
+            for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) {
+                if( column_block[v_i] < min + VECTOR ) {
+                    disorder_addr.data_vec[ v_i ] = column_block[v_i] - min;
+                    column_block[v_i] = INT_MAX ;
+                }
+            }
+        }
+#define LOAD_TO_GATHER_LEVEL 1
+        if( num <= LOAD_TO_GATHER_LEVEL ) {
+
+            scatter_info.data_index_[0] = column_begin_vec[0];
+            level = num;
+            scatter_info.disorder_addr_ = disorder_addr;
+        } else { */
+            for( int v_i = 0 ; v_i < VECTOR ; v_i++ ) 
+                scatter_info.data_index_[v_i] = elem_addr[v_i];
+            level = VECTOR;
+//        }
+    scatter_info.mask_ = level | (DisOrder << VECTOR);
+    return scatter_info;
+}
+
+GatherInfo generate_gather_disorder_info_elem(const int * elem_addr ) {
+    GatherInfo scatter_info;
         DisorderAddr disorder_addr;
         std::vector<int> column_begin_vec;
         int column_block[VECTOR];
@@ -71,7 +115,7 @@ ScatterInfo generate_disorder_info_elem(const int * elem_addr ) {
                 scatter_info.data_index_[v_i] = elem_addr[v_i];
             level = VECTOR;
         }
-    scatter_info.mask_ = level;
+    scatter_info.mask_ = level | (DisOrder<<VECTOR);
     return scatter_info;
 }
  OrderType get_order_type(const int * index_ptr) {
@@ -102,7 +146,8 @@ ScatterInfo generate_disorder_info_elem(const int * elem_addr ) {
     } else if( inc_continue_num + equal_num == VECTOR - 1 ) {
         ot = IncContinue;
     } else if(dec_continue_num + equal_num == VECTOR - 1) {
-        ot = DecContinue;
+//        ot = DecContinue;
+        ot = DisOrder;
     } else if( inc_num + equal_num == VECTOR - 1) {
 //        ot = Inc;
          ot = DisOrder;
@@ -137,7 +182,7 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
 
     OrderType order_type = get_order_type( index_ptr );
     if(order_type == OrderEquel) {
-        scatter_info.mask_ = 0x1;
+        scatter_info.mask_ = 0x1 | (OrderEquel << VECTOR);
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == IncContinue ) {
@@ -145,20 +190,89 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == DisOrder ) {
-        scatter_info = generate_disorder_info_elem( index_ptr );
+        scatter_info = generate_scatter_disorder_info_elem( index_ptr );
     } else {
         LOG(FATAL) << "Unsupported" << order_type; 
     }
     return scatter_info;
 }
 GatherInfo generate_gather_info_elem(const int * index_ptr) {
-    return generate_scatter_info_elem(index_ptr);
+    GatherInfo scatter_info;
+
+    OrderType order_type = get_order_type( index_ptr );
+    if(order_type == OrderEquel) {
+        scatter_info.mask_ = 0x1 | (OrderEquel << VECTOR);
+        scatter_info.order_type_ = order_type;
+        scatter_info.data_index_[0] = index_ptr[0];
+    } else if( order_type == IncContinue ) {
+        scatter_info.mask_ = get_mask( index_ptr, order_type );
+        scatter_info.order_type_ = order_type;
+        scatter_info.data_index_[0] = index_ptr[0];
+    } else if( order_type == DisOrder ) {
+        scatter_info = generate_gather_disorder_info_elem( index_ptr );
+    } else {
+        LOG(FATAL) << "Unsupported" << order_type; 
+    }
+    return scatter_info;
 }
+ReductionInfo generate_reduction_disorder_info_elem( const int * index_ptr ) {
+    ReductionInfo reduction_info;
+    int max_len = 1;
+    bool has_searched[VECTOR];
+    for( int i = 0 ; i < VECTOR ; i++ ) {
+        has_searched[i] = false;
+    }
+    for( int i = 0 ; i < VECTOR; i++ ) {
+        int value = index_ptr[i];
+        int tmp_max_len = 1;
+        if( !has_searched[i]  ) {
+        for( int j = i + 1 ; j < VECTOR ; j++ ) {
+            if(index_ptr[j] == value) {
+                tmp_max_len++;
+                has_searched[j] = true;
+            }
+        }
+        max_len = tmp_max_len > max_len? tmp_max_len:max_len;
+        }
+    }
+    int reduce_num[] = { 0 , 1 , 2 , 2,3,3,3,3, 4,4,4,4,4,4,4,4 };
+    int num = reduce_num[ max_len - 1 ];
+
+    int has_reduce = 0x0;
+    for( int i = 0 ; i < num ; i++ ) {
+        int8_t * shuffle_index_ptr_tmp = reduction_info.reduction_addr_[i].data_vec; 
+        
+        for( int i = VECTOR - 1 ; i >= 0 ; i-- ) {
+            int value = index_ptr[i];
+            bool has_find = false;
+
+            if( (has_reduce & (0x1<<i)) == 0 ) {
+            for( int j = i - 1 ; j >= 0 ; j-- ) {
+                if(value == index_ptr[j]&&(( has_reduce &(0x1<<j))==0) ) {
+                    has_find = true;
+                    has_reduce |= (0x1<<j);
+                    shuffle_index_ptr_tmp[i] = j;
+                    break;
+                }
+            }
+            }
+            if(!has_find) {
+               shuffle_index_ptr_tmp[i] = VECTOR; 
+            }
+        }
+    }
+    reduction_info.mask_ = num | (DisOrder << VECTOR);
+    return reduction_info;
+}
+
 ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterInfo &scatter_info ) {
     ReductionInfo reduction_info;
     if(scatter_info.order_type_ == IncContinue || scatter_info.order_type_== OrderEquel ) {
          reduction_info.order_type_ = scatter_info.order_type_; 
          reduction_info.mask_ = scatter_info.mask_;
+    } else if(scatter_info.order_type_ == DisOrder) {
+         reduction_info = generate_reduction_disorder_info_elem( index_ptr );
+         reduction_info.order_type_ = scatter_info.order_type_;
     } else {
         LOG(FATAL) << "Unsupported Now" << scatter_info ;
     }
