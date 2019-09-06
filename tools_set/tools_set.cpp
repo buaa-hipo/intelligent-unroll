@@ -24,13 +24,8 @@ std::ostream & operator<<( std::ostream &stream , const GatherInfo &scatter_info
 }
 
 
-class GenerateInfoClass {
-    const int vector_;
-    public:
-    GenerateInfoClass( const int vector ) : vector_(vector) {
-    }
-
-ScatterInfo generate_scatter_disorder_info_elem(const int * elem_addr ) {
+    
+ScatterInfo generate_scatter_disorder_info_elem(const int * elem_addr ,const int vector_) {
     ScatterInfo scatter_info;
     int level;
 
@@ -41,7 +36,7 @@ ScatterInfo generate_scatter_disorder_info_elem(const int * elem_addr ) {
     return scatter_info;
 }
 
-GatherInfo generate_gather_disorder_info_elem(const int * elem_addr ) {
+GatherInfo generate_gather_disorder_info_elem(const int * elem_addr,const int vector_ ) {
     GatherInfo scatter_info;
         DisorderAddr disorder_addr;
         std::vector<int> column_begin_vec;
@@ -84,7 +79,8 @@ GatherInfo generate_gather_disorder_info_elem(const int * elem_addr ) {
     scatter_info.set_mask( level | (DisOrder<<vector_));
     return scatter_info;
 }
- OrderType get_order_type(const int * index_ptr) {
+ OrderType get_order_type(const int * index_ptr,const int vector_) {
+    
     int inc_num = 0;
     int dec_num = 0;
     int equal_num = 0;
@@ -109,6 +105,8 @@ GatherInfo generate_gather_disorder_info_elem(const int * elem_addr ) {
     OrderType ot;
     if( equal_num == vector_ - 1) {
         ot =  OrderEquel;
+    } else if( vector_ > VECTOR8 ) {
+        ot = DisOrder;
     } else if( inc_continue_num + equal_num == vector_ - 1 ) {
         ot = IncContinue;
     } else if(dec_continue_num + equal_num == vector_ - 1) {
@@ -125,7 +123,7 @@ GatherInfo generate_gather_disorder_info_elem(const int * elem_addr ) {
     }
     return ot;
 }
-int get_mask(const int * index_ptr,OrderType order_type) {
+int get_mask(const int * index_ptr,OrderType order_type,const int vector_) {
 
     int mask = 0x1;
     if( order_type != DisOrder ) {
@@ -143,45 +141,45 @@ int get_mask(const int * index_ptr,OrderType order_type) {
     return mask;
 }
 
-ScatterInfo generate_scatter_info_elem(const int * index_ptr) {
+ScatterInfo generate_scatter_info_elem(const int * index_ptr,const int vector_) {
     ScatterInfo scatter_info;
 
-    OrderType order_type = get_order_type( index_ptr );
+    OrderType order_type = get_order_type( index_ptr ,vector_);
     if(order_type == OrderEquel) {
         scatter_info.set_mask( 0x1 | (OrderEquel << vector_));
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == IncContinue ) {
-        scatter_info.set_mask( get_mask( index_ptr, order_type ));
+        scatter_info.set_mask( get_mask( index_ptr, order_type ,vector_));
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == DisOrder ) {
-        scatter_info = generate_scatter_disorder_info_elem( index_ptr );
+        scatter_info = generate_scatter_disorder_info_elem( index_ptr,vector_ );
     } else {
         LOG(FATAL) << "Unsupported" << order_type; 
     }
     return scatter_info;
 }
-GatherInfo generate_gather_info_elem(const int * index_ptr) {
+GatherInfo generate_gather_info_elem(const int * index_ptr,const int vector_) {
     GatherInfo scatter_info;
 
-    OrderType order_type = get_order_type( index_ptr );
+    OrderType order_type = get_order_type( index_ptr,vector_ );
     if(order_type == OrderEquel) {
         scatter_info.set_mask( 0x1 | (OrderEquel << vector_));
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == IncContinue ) {
-        scatter_info.set_mask( get_mask( index_ptr, order_type ));
+        scatter_info.set_mask( get_mask( index_ptr, order_type,vector_ ));
         scatter_info.order_type_ = order_type;
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == DisOrder ) {
-        scatter_info = generate_gather_disorder_info_elem( index_ptr );
+        scatter_info = generate_gather_disorder_info_elem( index_ptr,vector_ );
     } else {
         LOG(FATAL) << "Unsupported" << order_type; 
     }
     return scatter_info;
 }
-ReductionInfo generate_reduction_disorder_info_elem( const int * index_ptr ) {
+ReductionInfo generate_reduction_disorder_info_elem( const int * index_ptr,const int vector_ ) {
     ReductionInfo reduction_info;
     int max_len = 1;
     bool has_searched[vector_];
@@ -231,13 +229,13 @@ ReductionInfo generate_reduction_disorder_info_elem( const int * index_ptr ) {
     return reduction_info;
 }
 
-ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterInfo &scatter_info ) {
+ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterInfo &scatter_info,const int vector_ ) {
     ReductionInfo reduction_info;
     if(scatter_info.order_type_ == IncContinue || scatter_info.order_type_== OrderEquel ) {
          reduction_info.order_type_ = scatter_info.order_type_; 
          reduction_info.set_mask(scatter_info.get_mask());
     } else if(scatter_info.order_type_ == DisOrder) {
-         reduction_info = generate_reduction_disorder_info_elem( index_ptr );
+         reduction_info = generate_reduction_disorder_info_elem( index_ptr,vector_ );
          reduction_info.order_type_ = scatter_info.order_type_;
     } else {
         LOG(FATAL) << "Unsupported Now" << scatter_info ;
@@ -245,20 +243,20 @@ ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterIn
     return reduction_info;
 }
 
-void generate_info( ScatterInfo *info_ptr ,const int *addr,int vec_num) {
+void generate_info( ScatterInfo *info_ptr ,const int *addr,int vec_num,const int vector_) {
         for( int i = 0 ; i < vec_num ; i++ ) {
-            info_ptr[i] = generate_scatter_info_elem( addr + i * vector_ );
+            info_ptr[i] = generate_scatter_info_elem( addr + i * vector_ ,vector_);
         }
 }
-void generate_info( ReductionInfo *info_ptr ,const int *addr, const int vec_num , ScatterInfo * scatter_info_ptr ) {
+void generate_info( ReductionInfo *info_ptr ,const int *addr, const int vec_num , ScatterInfo * scatter_info_ptr ,const int vector_) {
         for( int i = 0 ; i < vec_num ; i++ ) {
-            info_ptr[i] = generate_reduction_info_elem( addr + i * vector_, scatter_info_ptr[i] );
+            info_ptr[i] = generate_reduction_info_elem( addr + i * vector_, scatter_info_ptr[i],vector_ );
         }
 }
 
-void generate_info( GatherInfo * info_ptr ,const int *addr,int vec_num) {
+void generate_info( GatherInfo * info_ptr ,const int *addr,int vec_num,const int vector_) {
         for( int i = 0 ; i < vec_num ; i++ ) {
-            info_ptr[i] = generate_gather_info_elem( addr + i * vector_ );
+            info_ptr[i] = generate_gather_info_elem( addr + i * vector_ , vector_);
         }
 
 }
@@ -373,18 +371,18 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
 
 
     //////////////////
-    void generate_information_( 
+    void generate_information( 
         const std::set<std::string> & scatter_set,
         const std::set<std::string> & reduction_set,
         const std::set<std::string> & gather_set,
         const std::map<std::string, void*> & name2ptr_map,
         const int table_column_num,
-        ////output
         std::map<std::string,GatherInfo*> &gather_map,
         std::map<std::string,ScatterInfo*> &scatter_map,
         std::map<std::string,ReductionInfo*> &reduction_map,
         std::unordered_map<size_t,std::vector<int>> &same_feature_map,
-        std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map
+        std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map,
+        const int vector
         ) {
         //////Init feature table
         std::string output_name;
@@ -394,14 +392,14 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
 
             auto name2ptr_map_it = name2ptr_map.find(scatter_index);
 
-            generate_info( scatter_info_tmp , (int*)name2ptr_map_it->second , table_column_num );
+            generate_info( scatter_info_tmp , (int*)name2ptr_map_it->second , table_column_num,vector );
             scatter_map[ scatter_index ] = scatter_info_tmp;
             ////////////reduction
             if( reduction_set.find(scatter_index) != reduction_set.end()  ) {
 
                 ReductionInfo * reduction_info_tmp = new ReductionInfo[ table_column_num ];
 
-                generate_info( reduction_info_tmp, (int*)name2ptr_map_it->second, table_column_num ,scatter_info_tmp );
+                generate_info( reduction_info_tmp, (int*)name2ptr_map_it->second, table_column_num ,scatter_info_tmp ,vector);
 
                 reduction_map[scatter_index] = reduction_info_tmp; 
                 gather_map[ scatter_index ] = scatter_info_tmp; 
@@ -411,7 +409,7 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
 
             GatherInfo * gather_info_tmp = new GatherInfo[table_column_num];
             auto name2ptr_map_it = name2ptr_map.find(gather_index);
-            generate_info( gather_info_tmp , (int*)name2ptr_map_it->second , table_column_num );
+            generate_info( gather_info_tmp , (int*)name2ptr_map_it->second , table_column_num,vector );
 
             gather_map[ gather_index ] = gather_info_tmp;
         }
@@ -433,36 +431,7 @@ void combin_same_write_pattern_together( std::unordered_map<size_t,std::vector<i
         }
 
     }
-};
 
-void generate_information( 
-        const std::set<std::string> & scatter_set,
-        const std::set<std::string> & reduction_set,
-        const std::set<std::string> & gather_set,
-        const std::map<std::string, void*> & name2ptr_map,
-        const int table_column_num,
-        ////output
-        std::map<std::string,GatherInfo*> &gather_map,
-        std::map<std::string,ScatterInfo*> &scatter_map,
-        std::map<std::string,ReductionInfo*> &reduction_map,
-        std::unordered_map<size_t,std::vector<int>> &same_feature_map,
-        std::unordered_map<size_t,std::vector<std::pair<int,int>>>&same_feature_range_map,
-        const int vector
-        ) {
-        GenerateInfoClass generate_info_class(vector);
-        generate_info_class.generate_information_(
-                scatter_set,
-                reduction_set, 
-                gather_set,
-                name2ptr_map,
-                table_column_num,
-                gather_map,
-                scatter_map,
-                reduction_map,
-                same_feature_map,
-                same_feature_range_map
-                );
-} 
 
     std::ostream &  operator << (std::ostream & stream , const OrderType &order_type) {
         std::string order_type_str [] = {

@@ -28,6 +28,9 @@ virtual    StateMent* pass_(Reduce * stat   ) ;
 virtual    StateMent* pass_(BroadCast * stat   ) ;
 virtual    StateMent* pass_(BitCast * stat   ) ;
 virtual    StateMent* pass_(Binary * stat   ) ;
+
+virtual    StateMent* pass_(ICmpEQ * stat   ) ;
+virtual    StateMent* pass_(Select * stat   ) ;
 virtual    StateMent* pass_(Add * stat   );
 virtual    StateMent* pass_(Div * stat   ) ;
 

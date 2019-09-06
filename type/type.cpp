@@ -28,6 +28,7 @@ Type __int_v4_pointer = Type(&__int_v4, NOT_VEC);
 
 Type __double_pointer_v4 = Type( &__double, VECTOR4 );
 
+Type __float_v8 = Type( FLOAT,VECTOR8 );
 Type __double_v8 = Type( DOUBLE,VECTOR8 );
 Type __bool_v8 = Type( BOOL, VECTOR8);
 Type __int_v8 = Type( INT,VECTOR8 );
@@ -54,6 +55,7 @@ Type __bool_v16 = Type( BOOL, VECTOR16);
 Type __float_v16 = Type(FLOAT,VECTOR16);
 Type __float_v16_ptr = Type( &__float_v16, NOT_VEC );
 
+Type __float_v8_ptr = Type( &__float_v8, NOT_VEC );
 Type __float_ptr_v16 = Type( &__float, VECTOR16 );
 
 Type __int_ptr_v16 = Type( &__int, VECTOR16 );
@@ -114,7 +116,9 @@ Type type_scalar_ptr2ptr_vector( const Type type ) {
     return ret_type;
 }
 void Type::init_type(const int vector) {
+    LOG(INFO) << vector;
     if(vector == VECTOR8) {
+        __float_v = __float_v8;
          __double_v = __double_v8;
          __bool_v = __bool_v8;
          __int_v = __int_v8;
@@ -134,8 +138,10 @@ void Type::init_type(const int vector) {
 
          __int_ptr_v = __int_ptr_v8;
          __int8_ptr_v = __int8_ptr_v8;
-   
+         __float_v_ptr = __float_v8_ptr; 
     } else if(vector == VECTOR16) {
+        __float_v = __float_v16;
+         __float_v_ptr = __float_v16_ptr; 
         __double_v = __double_v8;
         __bool_v = __bool_v16;
         __int_v = __int_v16;

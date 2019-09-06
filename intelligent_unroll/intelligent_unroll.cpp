@@ -64,7 +64,6 @@ class IntelligentUnroll{
                           iterates_set_,
                           output_name_
                           );
-
         Type::init_type( vector_ );
         LOG(INFO) << "parse expression finished";
         ///////////generate information
@@ -80,6 +79,7 @@ class IntelligentUnroll{
                 same_feature_map_,
                 same_feature_range_map_ ,
                 vector_);
+
         LOG(INFO) << "generate information finished";
         ///////////transform data
         transform_data( name_type_map_,

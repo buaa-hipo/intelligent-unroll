@@ -339,7 +339,7 @@ class Const : public Expr{
             type_ = __int64;
         } else if( typeid(float) == typeid(T) ){
             type_ = __float;
-        } else if( typeid(char) == typeid(T) ) {
+        } else if( typeid(int8_t) == typeid(T) ) {
             type_ = __int8;
         } else {
             LOG(FATAL) << "Unsupport Type"  ;
@@ -356,7 +356,11 @@ class Const : public Expr{
             type_ = Type(DOUBLE, lanes);
         } else if( typeid(T) == typeid(bool) ) {
             type_ = Type(BOOL,lanes);
-        } else {
+        } else if( typeid(T) == typeid(float) ){
+            type_ = Type(FLOAT,lanes);
+        } else if( typeid(T) == typeid(int8_t) ){ 
+            type_ = Type(INT8,lanes);
+        } else{
             LOG(FATAL) << "Unsupport Type";
         }
         T * tmp = ( T * )malloc(sizeof(T)*lanes);
@@ -401,6 +405,9 @@ class Const : public Expr{
                 break;
             case INT8:
                 print_data( reinterpret_cast<int8_t*>(data_),lanes,ss);
+                break;
+            case FLOAT:
+                print_data( reinterpret_cast<float*>(data_),lanes,ss);
                 break;
             default:
                 LOG(FATAL) << "Unsupported";
@@ -608,7 +615,7 @@ class Load : public Expr {
             addr_name_ = node_name_;
             index_name_ = "";
             Type * type_ptr_tmp = &addr->get_type();
-            CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
+            CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n" << *type_ptr_tmp;
             type_ = Type( *type_ptr_tmp->get_pointer2type());
     }
 
@@ -774,6 +781,42 @@ class Store :public StateMent {
     StateMent * get_mask() const {
         return mask_;
     }
+};
+class Select : public Expr {
+    StateMent * v1_;
+    StateMent * v2_;
+    StateMent * index_;
+    protected:
+
+    Select( StateMent *v1,StateMent *v2, StateMent *index ) : v1_(v1),v2_(v2),index_(index) {
+        CHECK( v1->get_type() == v2->get_type()) << "the type of v1 and v2 is not equal\n";
+        CHECK( index->get_type() == __bool_v ) << "the lanes of index is not equal";
+        type_ = v1->get_type();
+    }
+    public:
+
+    static constexpr const char* class_name_ = "select";
+
+
+    static StateMent * make( StateMent *v1,StateMent *v2, StateMent *index ){ 
+        StateMent * stat_ptr = new Select(v1,v2,index);
+        return stat_ptr;
+    }
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    StateMent * get_v1() {
+        return v1_;
+    }
+    StateMent * get_v2() {
+        return v2_;
+        
+    }
+    StateMent * get_index() {
+        return index_;
+    }
+
+
 };
 
 class Shuffle : public Expr {
@@ -953,6 +996,32 @@ class BitCast : public Expr {
     }
     StateMent * get_v1() {
         return v1_;
+    }
+
+};
+class ICmpEQ : public Expr {
+    protected:
+    StateMent * v1_;
+    StateMent * v2_;
+
+    ICmpEQ( StateMent * v1,StateMent * v2 ) : v1_(v1),v2_(v2) {
+        type_ = __bool_v;
+    }
+    public:
+
+    static constexpr const char* class_name_ = "ICmpEQ";
+    static StateMent * make( StateMent * v1,StateMent * v2 ) {
+        StateMent * stat_ptr = new ICmpEQ( v1,v2 ); 
+        return stat_ptr;
+    }
+    virtual std::string get_class_name() {
+        return class_name_;
+    }
+    StateMent * get_v1() {
+        return v1_;
+    }
+    StateMent * get_v2() {
+        return v2_;
     }
 
 };

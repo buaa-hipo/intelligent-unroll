@@ -10,9 +10,12 @@ LD=g++
 LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11
 LINK_DIR=build/ 
 
-all: sum
-LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_redirect_var.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o sum.o 
-sum: $(LKFILE)
+all: spmv pagerank 
+LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_redirect_var.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o 
+pagerank: $(LKFILE) pagerank.o
+	$(LD) $^ $(LDFLAGS) -o $@
+
+spmv: $(LKFILE) spmv.o
 	$(LD) $^ $(LDFLAGS) -o $@
 parse.o:parse/parse.cpp node/node.hpp
 	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
@@ -50,8 +53,11 @@ csr_matrix.o:io_matrix/csr_matrix.cpp
 	$(CC) -c $(INCLUDE) $(CFLAGSPermitWarning) $< -o $@
 Timers.o:Timer/Timers.cpp
 	$(CC) $< -c -o $@
-sum.o: sum.cpp 
+spmv.o: app/spmv.cpp 
 	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+pagerank.o: app/pagerank.cpp 
+	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+
 #	$(CC) $< -S $(CFLAGS) -o sum.S
 #csr_matrix.o:csr_matrix.cpp
 #	$(CC) $< -c -o $@

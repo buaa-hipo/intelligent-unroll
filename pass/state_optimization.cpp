@@ -10,8 +10,9 @@ class OptimizationPass : public StateMentPass{
         std::map<std::string, Varience * > gather_scatter_has_load_info_index_;
 
         std::map<std::string, Varience * > gather_scatter_has_load_info_shuffle_;
-
+        Const * fzero_vec_const_;
         Const * dzero_vec_const_;
+        Const * six_int8_v16_const_ ;
     public:
     const std::map<std::string,GatherInfo*> &gather_map_;
 
@@ -65,6 +66,16 @@ class OptimizationPass : public StateMentPass{
 	    }
 
         dzero_vec_const_ = new Const( dzero_vec , vector_ );
+        float fzero_vec[vector_];
+        for( int i = 0 ; i < vector_ ; i++ ) {
+            fzero_vec[i] = 0;
+	    }
+
+        fzero_vec_const_ = new Const( fzero_vec , vector_ );
+        int8_t six_vec[VECTOR16];
+        for( int i = 0 ; i < VECTOR16 ; i++ ) 
+            six_vec[i] = VECTOR16;
+        six_int8_v16_const_ = new Const(six_vec, VECTOR16);
     }
 
 virtual    StateMent* pass_(Block * stat ) ;
@@ -120,27 +131,29 @@ StateMent * OptimizationPass::pass_(Block * stat) {
 StateMent * OptimizationPass::pass_(Gather * stat) {
     const std::string & index_name = stat->index_name_;
     auto gather_map_it = gather_map_.find(index_name);
+    LOG(INFO) << index_name ;
     if( gather_map_it != gather_map_.end() ) {
         const std::string & index_name = stat->index_name_;
 
         GatherInfo gather_info = (gather_map_it->second)[index_];
-
+        LOG(INFO) << gather_info;
         Varience * load_index;
 
         std::string addr_name = stat->addr_name_;
         std::vector<StateMent *> gather_state_vec;
         const auto & gather_name_new_var_map_it = gather_name_new_var_map_.find(index_name);
+        CHECK(gather_name_new_var_map_it!=gather_name_new_var_map_.end()) << "unfind ";
         Varience * gather_info_var = const_cast<Varience*>(gather_name_new_var_map_it->second);
 
         if( gather_info.order_type_ == DisOrder ) {
             int mask = gather_info.get_mask() & VEC_MASK;
-
+            LOG(INFO) << mask;
             if( mask == 1 ) {
                 Varience * permulation_addr;
                 if( gather_scatter_has_load_info_index_.find(index_name) == gather_scatter_has_load_info_index_.end() ) {
 
                     load_index = new Varience( __int );
-
+                
                     gather_state_vec.push_back( LetStat::make( load_index , Load::make( gather_info_var ) ));
                     gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(1) ) )); 
                     //warning 
@@ -210,7 +223,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                      
                     load_index = gather_scatter_has_load_info_index_[ index_name ];
                 }
-
+                LOG(INFO);
                 int mask = gather_info.get_mask() & VEC_MASK;
                 Bit2Addr bit2addr( vector_);
                 CompressAddr compress_addr = bit2addr.generate_compress( mask );
@@ -274,6 +287,7 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
         std::string  index_name = stat->index_name_;
         const auto& reduction_map_it = reduction_map_.find( index_name);
          
+                LOG(INFO);
         if( reduction_map_it != reduction_map_.end() ) {
             StateMent * v1_state_new = pass( stat->get_v1());
             StateMent * v2_state_new = pass( stat->get_v2());
@@ -303,12 +317,20 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
                 for( int i = 0 ; i < reduce_num ; i++ )  {
                     shuffle_index_const_vec.push_back( new Const( reduce_addr_int+ i*vector_,vector_ ) );
                 }
-                Varience *shuffle_res = new Varience( v2_state_new->get_type(),false );
+                Type v2_state_new_type = v2_state_new->get_type(); 
+                Varience *shuffle_res = new Varience( v2_state_new_type,false );
                 reduce_state_vec.push_back( LetStat::make( shuffle_res ,v2_state_new ) );
+                DataType v2_state_new_type_basic_data_type = v2_state_new_type.get_data_type();
                 for( int reduce_i = 0 ; reduce_i < reduce_num ; reduce_i++ ) {
-
-                    Varience * shuffle_simd = new Varience( __double_v);
-                    reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res , dzero_vec_const_, shuffle_index_const_vec[reduce_i] ))); 
+                    Varience * shuffle_simd = new Varience( v2_state_new_type );
+                    if(v2_state_new_type.get_data_type() == DOUBLE) { 
+                        reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res , dzero_vec_const_, shuffle_index_const_vec[reduce_i] )));
+                    } else if(v2_state_new_type.get_data_type() == FLOAT) {
+                    
+                        reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res , fzero_vec_const_, shuffle_index_const_vec[reduce_i] )));
+                    } else {
+                        LOG(FATAL) << "Unsupported";
+                    }
                     reduce_state_vec.push_back(LetStat::make( shuffle_res, Add::make( shuffle_simd, shuffle_res ) ));
 
                 }
@@ -316,8 +338,15 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
 
                 Const * compress_const = new Const( compress_addr.compress_vec, vector_ );
                 
+                if(v2_state_new_type_basic_data_type == DOUBLE) { 
+                    reduce_state_vec.push_back(LetStat::make( shuffle_res, Shuffle::make( shuffle_res , dzero_vec_const_, compress_const ) ));
+                } else if(v2_state_new_type_basic_data_type == FLOAT) {
                 
-                reduce_state_vec.push_back(LetStat::make( shuffle_res, Shuffle::make( shuffle_res , dzero_vec_const_, compress_const ) ));
+                    reduce_state_vec.push_back(LetStat::make( shuffle_res, Shuffle::make( shuffle_res , fzero_vec_const_, compress_const )));
+                } else {
+                
+                        LOG(FATAL) << "Unsupported";
+                }
 
                  reduce_state_vec.push_back(Add::make( v1_state_new, shuffle_res)) ;
                  return CombinStatVec(reduce_state_vec);
@@ -340,18 +369,31 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
                     } else if (vector_ == VECTOR16){
                         permulation_addr = new Varience( __int8_v );
                         reduce_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( reduction_info_var, __int8_v_ptr )) ));
+                        
                         reduce_state_vec.push_back( LetStat::make( reduction_info_var , IncAddr::make( reduction_info_var, new Const(4) ) ));
 
                     } else {
                         LOG(FATAL) << "Unsupported";
                     }
 
-                    Varience *shuffle_simd = new Varience( v2_state_new->get_type(),false );
-                    reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res ,  permulation_addr))); 
-                    reduce_state_vec.push_back(LetStat::make( shuffle_res, Add::make( shuffle_simd, shuffle_res ) ));
+                    Varience *shuffle_simd = new Varience( v2_state_new->get_type());
+                    reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res ,  permulation_addr)));                  
+                    Varience * mask_var = new Varience( __bool_v );
+                    LOG(INFO);
+                    if(vector_ == VECTOR16) {
+                        reduce_state_vec.push_back( LetStat::make(mask_var, ICmpEQ::make( permulation_addr, six_int8_v16_const_ ) ) );
+                    } else {
+                        LOG(FATAL) << "Unsupported";
+                    }
+
+                    Varience * select_var = new Varience( v2_state_new->get_type());
+                    reduce_state_vec.push_back( LetStat::make(select_var, Select::make(  fzero_vec_const_,shuffle_simd, mask_var ) ) );
+                    reduce_state_vec.push_back(LetStat::make( shuffle_res, Add::make( select_var, shuffle_res ) ));
                 }
 
                 reduce_state_vec.push_back(Add::make( v1_state_new, shuffle_res)) ;
+
+
                 return CombinStatVec(reduce_state_vec);
             } else {
                 LOG(FATAL) << "Unsupported";

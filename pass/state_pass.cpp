@@ -247,6 +247,26 @@ StateMent* StateMentPass::pass_(Store * stat ) {
     }
 
 }
+StateMent * StateMentPass::pass_(Select * stat ) {
+    StateMent * v1_state = stat->get_v1();
+    StateMent * v2_state = stat->get_v2();
+    StateMent * index_state = stat->get_index();
+
+    ////new
+    StateMent * v1_state_new = pass(v1_state);
+    StateMent * v2_state_new = pass(v2_state);
+
+    StateMent * index_state_new = pass(index_state);
+
+    if( v1_state == v1_state_new &&
+        v2_state == v2_state_new &&
+        index_state == index_state_new ) {
+        return stat;
+    } else {
+            return Select::make( v1_state_new,v2_state_new,index_state_new );
+    }
+}
+
 StateMent * StateMentPass::pass_(Shuffle * stat ) {
     StateMent * v1_state = stat->get_v1();
     StateMent * v2_state = stat->get_v2();
@@ -335,6 +355,20 @@ StateMent * StateMentPass::pass_(BitCast * stat ) {
         return BitCast::make(v1_state_new,stat->get_type());
     }
 }
+    StateMent * StateMentPass::pass_(ICmpEQ * stat ) {
+        StateMent * v1_state = stat->get_v1();
+        StateMent * v2_state = stat->get_v2();
+        StateMent * v1_state_new = pass(v1_state);
+        StateMent * v2_state_new = pass(v2_state);
+        if( v1_state == v1_state_new && 
+            v2_state == v2_state_new) { 
+            return stat;
+        } else {
+            StateMent * ret =  ICmpEQ::make(v1_state_new,v2_state_new);
+            return ret;
+        }
+    }
+
 #define PASS_BINARY( CLASSNAME ,OP) \
     StateMent * StateMentPass::pass_(CLASSNAME * stat ) {\
         StateMent * v1_state = stat->get_v1();\
@@ -381,6 +415,10 @@ StateMent* StateMentPass::pass(StateMent * stat) {
         SET_DISPATCH( Load );
         SET_DISPATCH(Store);
         SET_DISPATCH(Shuffle);
+
+        SET_DISPATCH(Select);
+
+        SET_DISPATCH(ICmpEQ);
         SET_DISPATCH( Reduce );
         SET_DISPATCH(BitCast);
         SET_DISPATCH(Binary);

@@ -87,18 +87,17 @@ class TransformData {
     int * malloc_new_data( GatherInfo * data_ptr ) {
         int need_data_num = 0;
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
-            
             if( data_ptr[i].order_type_ == DisOrder ) {
                 const int mask = data_ptr[i].get_mask() & VEC_MASK;
                 need_data_num += mask;
                 if( mask != vector_ )
-                    need_data_num += sizeof( DisorderAddr ) / sizeof(int) ;            
+                    need_data_num += sizeof( MASK )  * vector_ / sizeof(int) ;            
             } else if( data_ptr[i].order_type_ == IncContinue ){
                 need_data_num ++; 
             } else if( data_ptr[i].order_type_ == OrderEquel ){
                 need_data_num++; 
             } else {
-                LOG(FATAL) << "Unsupported" << data_ptr[i].order_type_;
+                LOG(FATAL) << "Unsupported" << i<<data_ptr[i].order_type_;
             }
         } 
         int * new_data_ptr = NULL;
@@ -306,7 +305,7 @@ public:
                     gather_name_new_ptr_map_[scatter_index] = rearrange_scatter_data;
                 }
             }
-
+            LOG(INFO);
             for( auto gather_index : gather_set_ ) {
 
                 auto gather_info_it = gather_map_.find( gather_index );
@@ -355,6 +354,7 @@ void transform_data(
             table_column_num,
             vector
             );
+    LOG(INFO) << vector;
     transform_data.rearrange_all();
 }
 

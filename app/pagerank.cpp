@@ -59,108 +59,89 @@ void print_vec( T * data_ptr, const int num ) {
 }
 //#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
-    #ifdef LITTEL_CASE
-        csrSparseMatrix sparseMatrix = little_test();
-        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
-    #elif defined LITTEL_CASE2
-
-        csrSparseMatrix sparseMatrix = little_test2(1024 ,1024);
-        csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
-    #else
         if(argc <= 1 ) {
             printf("Erro: You need to modify a file to read\n");
             return 0;
         }
-        csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
-    #endif
+        PageRankStructurePtr page_rank_structure_ptr = pagerank_read( argv[1]);
   
     
-    DATATYPE * data_ptr = sparseMatrixPtr->data_ptr;
-    int * column_ptr = sparseMatrixPtr->column_ptr;
-    int * row_ptr = sparseMatrixPtr->row_ptr;
+    float * sum = page_rank_structure_ptr->sum;
 
-    const int data_num = sparseMatrixPtr->data_num;
-    const int row_num = sparseMatrixPtr->row_num;
-    const int column_num = sparseMatrixPtr->column_num;
-    DATATYPE * x_array = SIMPLE_MALLOC( DATATYPE , column_num );
-    DATATYPE * y_array = SIMPLE_MALLOC( DATATYPE, row_num );
-    DATATYPE * y_array_bak = SIMPLE_MALLOC( DATATYPE , row_num );
-    
-    DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
-//    init_vec(x_array,column_num,1);
+    float * rank = page_rank_structure_ptr->rank;
 
-//    init_vec( x_array, column_num , 1 ,true);
-    init_vec( x_array, column_num , 1 ,true);
+    int * n1 = page_rank_structure_ptr->n1;
 
-    //init_vec(x_array,column_num,1);
-    init_vec( y_array, row_num , 0 );
-    init_vec( y_array_bak, row_num , 0 );
+    int * n2 = page_rank_structure_ptr->n2;
+    float * nneibor = page_rank_structure_ptr->nneibor;
+    int nedges = page_rank_structure_ptr->nedges;
+    int nnodes = page_rank_structure_ptr->nnodes;
+    float * sum_bak = SIMPLE_MALLOC( float, nnodes );
 
-    init_vec( y_array_time, row_num , 0 );
-    int * row_ptr_all = SIMPLE_MALLOC( int, data_num );
-    for(int row_i = 0 ; row_i < row_num; row_i++) {
-        int begin = row_ptr[row_i];
-        int end = row_ptr[row_i+1];
-        for( int j = begin ; j < end ; j++ ) {
-            row_ptr_all[j] = row_i;
-        }
-    }
-    std::string spmv_str = 
+    float * sum_time = SIMPLE_MALLOC( float, nnodes );
+    for( int i = 0 ; i < nnodes ; i++ )
+        sum_bak[i] = sum[i];
+
+    std::string pagerank_str = 
     "input: int * n1,   \
             int * n2,\
             float * rank,\
-            float * nneighbor\
+            float * nneibor\
      output:float * sum \
      lambda i : \
-            sum[ n2[i] ] += nneighbor[n1[i]] \
-            / rank[n1[i]]\
+            sum[ n2[i] ] += rank[n1[i]] \
+            / nneibor[n1[i]]\
             ";
     std::map<std::string,void*> name2ptr_map;
-    name2ptr_map[ "row_ptr" ] = row_ptr_all;
+    name2ptr_map[ "n1" ] = n1;
 
-    name2ptr_map[ "column_ptr" ] = column_ptr;
-    name2ptr_map[ "x_array" ] = x_array;
-    name2ptr_map[ "data_ptr" ] = data_ptr;
-    name2ptr_map[ "y_array" ] = y_array;
-    LOG(INFO) << data_num/VECTOR;
-    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/VECTOR );
-    using FuncType = int(*)( double*,int*,int*,double*,double*);
+    name2ptr_map[ "n2" ] = n2;
+    name2ptr_map[ "rank" ] = rank;
+    name2ptr_map[ "nneibor" ] = nneibor;
+    name2ptr_map[ "sum" ] = sum;
+#define VECTOR 16
+    LOG(INFO) << nedges/VECTOR;
+    uint64_t func_int64 = compiler( pagerank_str,name2ptr_map,nedges/VECTOR );
+    using FuncType = int(*)( float*,int*,int*,float*,float*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");
-        spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
+    for(int j=0;j<nedges;j++) {
+        int nx = n1[j];
+        int ny = n2[j];
+        sum_bak[ny] += rank[nx] / nneibor[nx];
+    }
 
     Timer::endTimer("aot");
 
     Timer::printTimer("aot");
     
-    func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
-    LOG(INFO) << data_num / VECTOR * VECTOR;
-    for( int i = (data_num / VECTOR * VECTOR) ; i < data_num ; i++ ) {
-        y_array[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+    func( sum, n1,n2,rank,nneibor );
+    LOG(INFO) << nedges / VECTOR * VECTOR;
+    for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+        sum[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
     }
-     for( int i = 0 ; i < 50 ; i++ ) {
-        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
-        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
 
-            y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+#define WORM_TIMES 50
+     for( int i = 0 ; i < WORM_TIMES ; i++ ) {
+        func( sum_time, n1,n2,rank,nneibor );
+        for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+            sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
         }
      }
 
 #define TIMES 1000
     Timer::startTimer("jit");
      for( int i = 0 ; i < TIMES ; i++ ){
-        func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
-        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
-
-            y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
+        func( sum_time, n1,n2,rank,nneibor );
+        for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+            sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
         }
-
      }
 
     Timer::endTimer("jit");
     Timer::printTimer("jit",TIMES);
-    Timer::printGFLOPS( "jit", data_num * 2 , TIMES );
-    if(!check_equal( y_array_bak, y_array, row_num )) {
+    Timer::printGFLOPS( "jit", nedges * 2 , TIMES );
+    if(!check_equal( sum_bak, sum, nnodes )) {
         return 1;
     }
     return 0;

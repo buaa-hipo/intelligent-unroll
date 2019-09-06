@@ -197,11 +197,23 @@ llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
                 llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
                 LLVMPrintDOUBLE( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
             }
+        } else if( type == __float_v ) {
+            for( int i = 0 ; i < vector_; i++ ) {
+                llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
+                LLVMPrintFloat( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
+            }
         } else if( type == __int_v ) {
             for( int i = 0 ; i < vector_; i++ ) {
                 llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
                 LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
             }
+        } else if( type == __int8_v ) {
+            for( int i = 0 ; i < vector_; i++ ) {
+                llvm::Value * value_tmp_int8 = build_ptr_->CreateExtractElement( value, i);
+                llvm::Value * value_tmp_int = build_ptr_->CreateZExtOrBitCast( value_tmp_int8 , t_int_ );
+                LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp_int);
+            }
+
         } else {
             LOG(FATAL) << "Unsupport Type ";
         }
@@ -320,6 +332,9 @@ llvm::Value* LLVMCodeGen::CodeGen_( Const* stat) {
         } else if( stat_type.get_data_type() == INT8 ){
 
             init_vec<int8_t>(vec,data,lanes,t_int8_); 
+        } else if(stat_type.get_data_type() == FLOAT) {
+
+            init_vec<float>(vec,data,lanes,t_float_); 
         } else {
             LOG(FATAL) << "does not support";
         }
@@ -427,7 +442,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(Gather * stat) {
         } else if( stat->get_type() == __int_v ) { 
             return  build_ptr_->CreateMaskedGather(  ptr_value , alinements_, mask_value , ZeroVec_);
         } else {
-            LOG(FATAL ) << "Unsupported type";
+            LOG(FATAL ) << "Unsupported type" << stat->get_type();
             return Null_; 
         }
     }
@@ -525,8 +540,17 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
     }
     return res;
 }
+llvm::Value * LLVMCodeGen::CodeGen_(Select * stat) {
+    StateMent * stat_v1 = stat->get_v1();
+    llvm::Value * v1_value = CodeGen(stat_v1);
+    StateMent * stat_v2 = stat->get_v2();
+    llvm::Value * v2_value = CodeGen(stat_v2);
+    llvm::Value * index_value = CodeGen(stat->get_index());
+    return build_ptr_->CreateSelect(index_value, v1_value,v2_value);
+} 
 llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
-    llvm::Value * v1_value = CodeGen(stat->get_v1());
+    StateMent * stat_v1 = stat->get_v1();
+    llvm::Value * v1_value = CodeGen(stat_v1);
     StateMent * stat_v2 = stat->get_v2();
     llvm::Value * v2_value;
     if( stat_v2 != NULL ) {
@@ -536,14 +560,31 @@ llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
     
     llvm::Value * res ;
     if(stat_v2 == NULL) {
-        llvm::Value * index8_vec = build_ptr_->CreateBitCast( index_value, t_int8_vec_ ); 
-        llvm::Value * index_vec = build_ptr_->CreateZExtOrBitCast( index8_vec, t_int64_vec_ );
+        Type stat_v1_type = stat_v1->get_type();
+        DataType base_data_type = stat_v1_type.get_data_type();
+        int lanes = stat_v1_type.get_lanes();
+        if( lanes == VECTOR8 && base_data_type == DOUBLE  ) {
+            llvm::Value * index8_vec = build_ptr_->CreateBitCast( index_value, t_int8_vec_ ); 
+            llvm::Value * index_vec = build_ptr_->CreateZExtOrBitCast( index8_vec, t_int64_vec_ );
         
-        std::vector<llvm::Value*> args;
-        args.push_back(v1_value);
-        args.push_back(index_vec);
-        llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_double_512_ ,args );
-        res = shuffle_data;
+            std::vector<llvm::Value*> args;
+            args.push_back(v1_value);
+            args.push_back(index_vec);
+            llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_double_512_ ,args );
+            res = shuffle_data;
+        } else if( lanes == VECTOR16 && base_data_type == FLOAT ) {
+////////////////////////
+            llvm::Value * index_ext = build_ptr_->CreateZExtOrBitCast( index_value, t_int_vec_);
+            std::vector<llvm::Value*> args;
+            args.push_back(v1_value);
+            args.push_back(index_ext);
+            llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_512_ ,args );
+            res = shuffle_data;
+        } else {
+            LOG(FATAL) << "Unsupported";
+        }
+/////////////////////////
+
     } else {
         res = build_ptr_->CreateShuffleVector( v1_value, v2_value, index_value);
     }
@@ -562,6 +603,13 @@ llvm::Value * LLVMCodeGen::CodeGen_(Reduce * stat) {
             return ret;
         } else if(v1->get_type().get_data_type() == INT) {
             return build_ptr_->CreateAddReduce(v1_value);
+        } else if(v1->get_type().get_data_type() == FLOAT) {
+            llvm::Value * Acc = llvm::UndefValue::get( t_float_ );
+            llvm::FastMathFlags FMFFast;
+            FMFFast.setFast();
+            llvm::CallInst* ret = build_ptr_->CreateFAddReduce(Acc,v1_value);
+            ret->setFastMathFlags(FMFFast);
+            return ret;
         } else {
             LOG(FATAL) << "the type does not support";
             return Null_;
@@ -600,6 +648,14 @@ llvm::Value * LLVMCodeGen::CodeGen_(Binary * stat) {
         LOG(FATAL) << "please specify the binary operation";
         return Null_;
     }
+llvm::Value * LLVMCodeGen::CodeGen_(ICmpEQ * stat) {
+        StateMent * v1 = stat->get_v1();
+        llvm::Value * v1_value = CodeGen( v1);
+        StateMent * v2 = stat->get_v2();
+        llvm::Value * v2_value = CodeGen( v2);
+        return build_ptr_->CreateICmpEQ( v1_value , v2_value);    
+}
+
 llvm::Value * LLVMCodeGen::CodeGen_(Add * stat) {
         StateMent * v1 = stat->get_v1();
         llvm::Value * v1_value = CodeGen( v1);
@@ -807,6 +863,9 @@ llvm::Value* LLVMCodeGen::CodeGen( StateMent * stat ) {
             SET_DISPATCH( Reduce );
             SET_DISPATCH(BitCast);
             SET_DISPATCH(Binary);
+
+            SET_DISPATCH(ICmpEQ);
+            SET_DISPATCH(Select);
             SET_DISPATCH(Add);
             SET_DISPATCH(Mul);
 

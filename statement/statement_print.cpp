@@ -45,6 +45,9 @@ void print_(Store * stat, std::ostream&os ) ;
 
 void print_(Shuffle * stat, std::ostream&os ) ;
 
+void print_(Select * stat, std::ostream&os ) ;
+
+void print_(ICmpEQ * stat, std::ostream&os ) ;
 void print_(Reduce * stat, std::ostream&os ) ;
 
 void print_(BroadCast * stat, std::ostream&os ) ;
@@ -214,6 +217,16 @@ void StateMentPrint::print_(Store * stat, std::ostream&os ) {
     }
     os << "\n";
 }
+void StateMentPrint::print_(Select * stat, std::ostream&os ) {
+    os << stat->get_class_name() << " (";
+    print(stat->get_v1(),os);
+    os << " , ";
+    print(stat->get_v2(),os);
+    os << " , ";
+    print(stat->get_index(),os);
+    os << ")\n";
+}
+
 void StateMentPrint::print_(Shuffle * stat, std::ostream&os ) {
     os << stat->get_class_name() << " (";
     print(stat->get_v1(),os);
@@ -259,6 +272,12 @@ void StateMentPrint::print_(BitCast * stat, std::ostream&os ) {
     os << ")";
     print( stat->get_v1(),os);
 }
+    void StateMentPrint::print_(ICmpEQ * stat,std::ostream& os ) {
+        print(stat->get_v1(),os); 
+        os <<  " == " ;
+        print(stat->get_v2(),os);
+    }
+
 #define PRINT_BINARY( CLASSNAME ,OP) \
     void StateMentPrint::print_(CLASSNAME * stat,std::ostream& os ) {\
         print(stat->get_v1(),os); \
@@ -312,6 +331,10 @@ void StateMentPrint::print(StateMent * stat,std::ostream&os) {
 
         SET_DISPATCH(ExtractElement );
         SET_DISPATCH(InsertElement );
+
+        SET_DISPATCH( Select );
+
+        SET_DISPATCH( ICmpEQ );
     }
 
     (*ftype_ptr)(stat,os);

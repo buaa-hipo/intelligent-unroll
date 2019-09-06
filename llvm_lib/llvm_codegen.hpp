@@ -159,6 +159,8 @@ class LLVMCodeGen {
 
     Value * CodeGen_(Store * stat) ;
 
+    Value * CodeGen_(ICmpEQ * stat) ;
+    Value * CodeGen_(Select * stat) ;
     Value * CodeGen_(Shuffle * stat) ;
 
     Value * CodeGen_(Reduce * stat) ;

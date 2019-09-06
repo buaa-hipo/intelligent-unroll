@@ -29,10 +29,10 @@ class Info{
 };
 
 typedef union DisorderAddr {
-    int64_t data[VECTOR_MAX>>3];
+    int64_t data_[(VECTOR_MAX>>3)];
     int int_data_vec_[ (VECTOR_MAX >> 2)  ];
     int8_t data_vec[VECTOR_MAX];
-} GatherAddr;
+} DisorderAddr;
 
 class GatherInfo : public Info{
     public:

@@ -4,3 +4,6 @@ sum
 *.S
 tags
 data/
+debug_log
+spmv
+pagerank

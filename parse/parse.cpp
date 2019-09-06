@@ -152,6 +152,9 @@ Token get_next_token(const std::string &expr) {
         } else {
             token.token_type_ = Mult;
         }
+    } else if(expr[index]=='/') {
+        index++;
+        token.token_type_ = Div;
     } else if( expr[index] == '[') {
         index++;
         token.token_type_ = LeftBracket;
@@ -354,8 +357,9 @@ Node* ParseInputExpr(const std::string & expr) {
         res_node_ptr = new AddNode( left_node_ptr,right_node_ptr );
     } else if( current_token_type == Mult ){ 
         res_node_ptr = new MultNode( left_node_ptr,right_node_ptr );
-    } else if( current_token_type == Div) { 
-        res_node_ptr = new MultNode( left_node_ptr,right_node_ptr );
+    } else if( current_token_type == Div) {
+        LOG(INFO) << "Div";
+        res_node_ptr = new DivNode( left_node_ptr,right_node_ptr );
     } else {
         res_node_ptr = left_node_ptr; 
     }

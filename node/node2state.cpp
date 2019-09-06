@@ -270,6 +270,7 @@ class Node2StateMent{
             } else {
              DivNode * div_node = dynamic_cast< DivNode*>( top_node_ptr );
             if(div_node != NULL) {
+                LOG(INFO) <<"Div";
                  auto div_node_it = _node2var_map.find( div_node ); 
                 if( div_node_it == _node2var_map.end() ) {
                     LOG(FATAL) << "Can not find Varience";

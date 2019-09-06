@@ -38,6 +38,10 @@ class LLVMPrint {
     
         __PrintElem( value , "Print %lf\n");
     }
+    void PrintFloat( llvm::Value * value ) {
+    
+        __PrintElem( value , "Print %f\n");
+    }
 
     void PrintInt64( llvm::Value * value ) {
     
@@ -80,6 +84,7 @@ class LLVMPrint {
 
 #define LLVMPrintDOUBLE(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintDouble(data)
 
+#define LLVMPrintFloat(mod,ctx,build,data)  LLVMPrint( mod,ctx,build).PrintFloat(data)
 #define LLVMPrintPtr(mod,ctx,build,ptr,lanes)  LLVMPrint( mod,ctx,build).PrintPtr(ptr,lanes)
 
 
