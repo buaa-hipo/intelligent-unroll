@@ -14,7 +14,7 @@
                         } while(0)
 void spmv_local(DATATYPE * y_ptr,const DATATYPE * x_ptr,const DATATYPE * data_ptr, const int * column_ptr, const int * row_ptr, const int row_num ) {
     for (int i = 0 ; i < row_num ; i++ ) {
-        DATATYPE sum = 0;
+        DATATYPE sum = y_ptr[i];
         for (int j = row_ptr[i]; j < row_ptr[i+1] ; j++ ) {
             sum += x_ptr[column_ptr[j]] * data_ptr[j];
         }
@@ -89,8 +89,8 @@ int main( int argc , char const * argv[] ) {
     DATATYPE * y_array_time = SIMPLE_MALLOC( DATATYPE, row_num );
 //    init_vec(x_array,column_num,1);
 
-//    init_vec( x_array, column_num , 1 ,true);
     init_vec( x_array, column_num , 1 ,true);
+//    init_vec( x_array, column_num , 1 ,true);
 
     //init_vec(x_array,column_num,1);
     init_vec( y_array, row_num , 0 );
@@ -122,9 +122,24 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "x_array" ] = x_array;
     name2ptr_map[ "data_ptr" ] = data_ptr;
     name2ptr_map[ "y_array" ] = y_array;
-    #define VECTOR 8
-    LOG(INFO) << data_num/VECTOR;
-    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/VECTOR );
+    const int max_bits_ = sizeof(double) * ByteSize;
+        #ifdef __AVX512CD__
+            const int vector_bits = 512;
+
+            const int vector_nums = vector_bits / max_bits_;
+        #else 
+            #ifdef __AVX2__
+            const int vector_bits = 256;
+
+            const int vector_nums = vector_bits / max_bits_;
+            #else
+            const int vector_nums = -1;
+            LOG(FATAL) << "Unsupported architetures";
+            #endif
+        #endif
+
+    LOG(INFO) << data_num/vector_nums;
+    uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/vector_nums );
     using FuncType = int(*)( double*,int*,int*,double*,double*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");
@@ -135,13 +150,14 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("aot");
     
     func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
-    LOG(INFO) << data_num / VECTOR * VECTOR;
-    for( int i = (data_num / VECTOR * VECTOR) ; i < data_num ; i++ ) {
+    LOG(INFO) << data_num / vector_nums * vector_nums;
+    for( int i = (data_num / vector_nums * vector_nums) ; i < data_num ; i++ ) {
         y_array[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
     }
-     for( int i = 0 ; i < 50 ; i++ ) {
+#define WARM_TIME 50
+     for( int i = 0 ; i < WARM_TIME ; i++ ) {
         func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
-        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
+        for( int i = data_num / vector_nums * vector_nums ; i < data_num ; i++ ) {
 
             y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
         }
@@ -151,7 +167,7 @@ int main( int argc , char const * argv[] ) {
     Timer::startTimer("jit");
      for( int i = 0 ; i < TIMES ; i++ ){
         func( y_array_time,row_ptr_all, column_ptr, x_array,data_ptr );
-        for( int i = data_num / VECTOR * VECTOR ; i < data_num ; i++ ) {
+        for( int i = data_num / vector_nums * vector_nums ; i < data_num ; i++ ) {
 
             y_array_time[ row_ptr_all[ i ] ] += x_array[column_ptr[i]] * data_ptr[ i ];
         }

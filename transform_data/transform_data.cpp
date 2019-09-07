@@ -27,7 +27,6 @@ class TransformData {
     const int table_column_num_;
 
     const int vector_;
-    const int VEC_MASK;
         ///
     #define RA_ARRAGE_ELEM( TYPE ) \
     int rearrange_elem(const int index, TYPE * data_ptr,int i, TYPE * new_data_ptr) { \
@@ -51,7 +50,7 @@ class TransformData {
     int rearrange_elem(const int index, const ReductionInfo * data_ptr,int i,int * new_data_ptr) {
                 const ReductionInfo & reduction_info_tmp = data_ptr[ index ];
                 if( reduction_info_tmp.order_type_ == DisOrder ) {
-                    const int mask = reduction_info_tmp.get_mask() & VEC_MASK;
+                    const int mask = reduction_info_tmp.get_mask() & VEC_MASK_MAX;
                     for( int mask_i = 0 ; mask_i < mask ; mask_i++ ) {
                         for( int disorder_i = 0 ; disorder_i < (vector_ >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = reduction_info_tmp.reduction_addr_[mask_i].int_data_vec_[disorder_i];
@@ -69,7 +68,7 @@ class TransformData {
         int need_data_num = 0;
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
             if( data_ptr[i].order_type_ == DisOrder ) {
-                const int mask = data_ptr[i].get_mask() & VEC_MASK;
+                const int mask = data_ptr[i].get_mask() & VEC_MASK_MAX;
                 if( mask != vector_ )
                     need_data_num += sizeof( MASK ) * (vector_) * mask  / sizeof(int) ;            
             } else if(data_ptr[i].order_type_ == IncContinue || data_ptr[i].order_type_ == OrderEquel)  {
@@ -88,9 +87,9 @@ class TransformData {
         int need_data_num = 0;
         for( int i = 0 ; i < table_column_num_ ; i++ ) {
             if( data_ptr[i].order_type_ == DisOrder ) {
-                const int mask = data_ptr[i].get_mask() & VEC_MASK;
+                const int mask = data_ptr[i].get_mask() & VEC_MASK_MAX;
                 need_data_num += mask;
-                if( mask != vector_ )
+                if( mask != vector_ && vector_ > VECTOR4 )
                     need_data_num += sizeof( MASK )  * vector_ / sizeof(int) ;            
             } else if( data_ptr[i].order_type_ == IncContinue ){
                 need_data_num ++; 
@@ -108,15 +107,26 @@ class TransformData {
     int rearrange_elem(const int index, GatherInfo * data_ptr,int i,int * new_data_ptr) {
                 const GatherInfo & gather_info_tmp = data_ptr[ index ];
                 if( gather_info_tmp.order_type_ == DisOrder ) {
-                    const int mask = gather_info_tmp.get_mask() & VEC_MASK;
+                    const int mask = gather_info_tmp.get_mask() & VEC_MASK_MAX;
+                    if( vector_ > VECTOR4 ) {
                     for( int mask_i = 0 ; mask_i < mask ; mask_i++,i++) { 
                         new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
                     }
-                    if( mask != vector_ ) {
+                    if( mask != vector_  ) {
                         for( int disorder_i = 0 ; disorder_i < (vector_ >> 2) ; disorder_i++) {
                             new_data_ptr[ i  ] = gather_info_tmp.disorder_addr_.int_data_vec_[disorder_i];
                             i++;
                         }
+                    }
+                    } else {
+                        if( mask == VECTOR4 ) {
+                            for( int mask_i = 0 ; mask_i < mask ; mask_i++,i++) { 
+                                new_data_ptr[ i  ] = gather_info_tmp.data_index_[mask_i];
+                            }
+                        } else {
+                            new_data_ptr[i] = gather_info_tmp.data_index_[0];
+                            i++;
+                        } 
                     }
 
                 } else if( gather_info_tmp.order_type_ == IncContinue || gather_info_tmp.order_type_ == OrderEquel ) {
@@ -135,7 +145,7 @@ class TransformData {
             const std::vector<int> & vec_tmp = same_feature_it.second;
             for( auto index : vec_tmp ) {
                 if( data_ptr[index].order_type_ == DisOrder ) {
-                    const int mask = data_ptr[index].get_mask() & VEC_MASK;
+                    const int mask = data_ptr[index].get_mask() & VEC_MASK_MAX;
                     need_data_num += mask;
                     if( mask != vector_ )
                         need_data_num += sizeof( MASK ) * vector_ / sizeof(int) ;            
@@ -153,7 +163,7 @@ class TransformData {
             for( auto index_pair : vec_tmp ) {
                 int index = index_pair.first;
                 if( data_ptr[index].order_type_ == DisOrder ) {
-                    const int mask = data_ptr[index].get_mask() & VEC_MASK;
+                    const int mask = data_ptr[index].get_mask() & VEC_MASK_MAX;
                     need_data_num += mask;
                     if( mask != vector_ )
                         need_data_num += sizeof( MASK ) * vector_ / sizeof(int) ;            
@@ -210,8 +220,7 @@ public:
         same_feature_map_(same_feature_map),
         same_feature_range_map_(same_feature_range_map),
         table_column_num_(table_column_num),
-        vector_(vector),
-        VEC_MASK(0xffffffff >> ( 32 - vector ))
+        vector_(vector)
     {
     }
     int * rearrange_scatter( ScatterInfo * data_ptr ) {

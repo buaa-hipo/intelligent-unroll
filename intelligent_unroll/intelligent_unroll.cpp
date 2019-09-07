@@ -164,11 +164,21 @@ class IntelligentUnroll{
         LLVMCodeGen codegen = LLVMCodeGen( vector_ );
         codegen.AddFunction( func_state_ptr_ );
 
+        codegen.PrintModule();
         LOG(INFO) << "add function finished";
         llvm_module_ptr_ = new LLVMModule( codegen.get_mod(),codegen.get_ctx() );
+        #ifdef __AVX512CD__
+            std::string arch_str = "llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx";
+        #else
+            #ifdef __AVX2__
+            std::string arch_str = "llvm -mcpu=x86-64  -mattr=+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx,+fast-gather";
+            #else
+            LOG(FATAL) << "Unsupported architetures";
 
-        llvm_module_ptr_->Init("llvm -mcpu=knl  -mattr=+avx512f,+avx512pf,+avx512er,+avx512cd,+fma,+avx2,+fxsr,+mmx,+sse,+sse2,+x87,+fma,+avx2,+avx");
-         
+            #endif
+        #endif
+
+        llvm_module_ptr_->Init( arch_str );
         uint64_t func = llvm_module_ptr_->GetFunction("function");
         LOG(INFO) << "generated module finished";
         return func;

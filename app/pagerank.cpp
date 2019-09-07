@@ -99,9 +99,25 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "rank" ] = rank;
     name2ptr_map[ "nneibor" ] = nneibor;
     name2ptr_map[ "sum" ] = sum;
-#define VECTOR 16
-    LOG(INFO) << nedges/VECTOR;
-    uint64_t func_int64 = compiler( pagerank_str,name2ptr_map,nedges/VECTOR );
+    const int max_bits_ = sizeof(float) * ByteSize;
+        #ifdef __AVX512CD__
+            const int vector_bits = 512;
+
+            const int vector_nums = vector_bits / max_bits_;
+        #else 
+            #ifdef __AVX2__
+            const int vector_bits = 256;
+
+            const int vector_nums = vector_bits / max_bits_;
+            #else
+            const int vector_nums = -1;
+            LOG(FATAL) << "Unsupported architetures";
+            #endif
+        #endif
+    LOG(INFO) << vector_nums;
+
+    LOG(INFO) << nedges/vector_nums;
+    uint64_t func_int64 = compiler( pagerank_str,name2ptr_map,nedges/vector_nums );
     using FuncType = int(*)( float*,int*,int*,float*,float*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");
@@ -116,15 +132,15 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("aot");
     
     func( sum, n1,n2,rank,nneibor );
-    LOG(INFO) << nedges / VECTOR * VECTOR;
-    for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+    LOG(INFO) << nedges / vector_nums * vector_nums;
+    for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
         sum[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
     }
 
 #define WORM_TIMES 50
      for( int i = 0 ; i < WORM_TIMES ; i++ ) {
         func( sum_time, n1,n2,rank,nneibor );
-        for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+        for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
             sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
         }
      }
@@ -133,7 +149,7 @@ int main( int argc , char const * argv[] ) {
     Timer::startTimer("jit");
      for( int i = 0 ; i < TIMES ; i++ ){
         func( sum_time, n1,n2,rank,nneibor );
-        for( int i = (nedges / VECTOR * VECTOR) ; i < nedges ; i++ ) {
+        for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
             sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
         }
      }

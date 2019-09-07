@@ -39,11 +39,15 @@ class LLVMCodeGen {
 
     Function * conflict_512_;
 
+    Function * permvar_float_256_;
     Function * permvar_double_512_;
     Function * permvar_float_512_;
     Function * permvar_int_512_;
+
+//    Function * permvar_double_256_;
     llvm::Type*  t_int_;
 
+    llvm::Type*  t_int4_;
     llvm::Type*  t_int8_;
 
     llvm::Type*  t_int16_;

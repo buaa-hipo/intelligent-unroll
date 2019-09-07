@@ -257,7 +257,7 @@ csrSparseMatrixPtr matrix_read_csr( const char * filename ) {
         csrValA[i] = rand() % 10;
 
 //#else
-//        csrValA[i] = 1;
+        //csrValA[i] = 1;
 //#endif
     }
 

@@ -65,7 +65,6 @@ class LLVMModule  {
 /*  std::unique_ptr<llvm::Module> get_module() {
     return module_;
   }*/
-
   llvm::Module * get_module() {
     return module_.get();
   }

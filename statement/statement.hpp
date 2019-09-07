@@ -341,6 +341,8 @@ class Const : public Expr{
             type_ = __float;
         } else if( typeid(int8_t) == typeid(T) ) {
             type_ = __int8;
+        } else if( typeid(char) == typeid(T) ){
+            type_ = __int8;
         } else {
             LOG(FATAL) << "Unsupport Type"  ;
         }
@@ -606,7 +608,7 @@ class Load : public Expr {
             index_name_ = "";
             mask_ = NULL;
             Type * type_ptr_tmp = &addr->get_type();
-            CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n";
+            CHECK( type_ptr_tmp->is_pointer()) << "address should be pointer type\n" << *type_ptr_tmp;
             type_ = Type( *type_ptr_tmp->get_pointer2type());
     }
     Load( StateMent * addr, StateMent * mask, bool is_alined):addr_(addr),mask_(mask),is_alined_(is_alined) {

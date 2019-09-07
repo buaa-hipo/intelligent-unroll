@@ -66,7 +66,9 @@
             return t_int_dvec_p_;
         } else if( type == __int_dv ) {
             return t_int_dvec_;
-        } else{
+        } else if( type == __int4 ){
+            return t_int4_;
+        } else {
             LOG(FATAL) << type <<"type does not support ";
             return t_int_;
         }
@@ -83,6 +85,12 @@ LLVMCodeGen::LLVMCodeGen(const int vector):vector_(vector) {
 
         permvar_double_512_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_df_512);
         permvar_float_512_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_sf_512);
+
+        permvar_float_256_ = llvm::Intrinsic::getDeclaration(mod_ptr_.get(), llvm::Intrinsic::x86_avx2_permps);
+//        permvar_double_256_ = llvm::Intrinsic::getDeclaration( mod_ptr_.get(), llvm::Intrinsic::x86_avx_vpermilvar_pd_256 );
+//        permvar_double_256_ = llvm::Intrinsic::getDeclaration( mod_ptr_.get(), llvm::Intrinsic::x86_avx512_permvar_df_256 );
+
+//        x86_avx512_permvar_df_256
 	TheFPM = llvm::make_unique<llvm::legacy::FunctionPassManager>( mod_ptr_.get());
 	TheFPM->add( llvm::createPromoteMemoryToRegisterPass());
 	TheFPM->add( llvm::createInstructionCombiningPass() );
@@ -96,6 +104,8 @@ LLVMCodeGen::LLVMCodeGen(const int vector):vector_(vector) {
         t_int_ =  llvm::Type::getInt32Ty(*ctx_ptr_);
 
         t_int16_ = llvm::Type::getInt16Ty( *ctx_ptr_ ); 
+
+        t_int4_ =  llvm::Type::getIntNTy(*ctx_ptr_,4);
         t_int8_ =  llvm::Type::getInt8Ty(*ctx_ptr_);
         t_int64_ =  llvm::Type::getInt64Ty(*ctx_ptr_);
         t_bool_ =  llvm::Type::getInt1Ty(*ctx_ptr_);
@@ -452,7 +462,8 @@ llvm::Value * LLVMCodeGen::CodeGen_(Load * stat) {
 
     llvm::Value * res;
     const int basic_type_size = GetBasicTypeSize( stat );
-    if( stat->has_mask() ) {
+    StateMent * mask_stat = stat->get_mask();
+    if( stat->has_mask() && mask_stat != NULL ) {
 
         llvm::Value * mask_value = CodeGen( stat->get_mask());
         if( !mask_value->getType()->isVectorTy()) {
@@ -469,6 +480,12 @@ llvm::Value * LLVMCodeGen::CodeGen_(Load * stat) {
         
                 mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
                
+            } else if(vector_ == VECTOR4){ 
+                 if( mask_value->getType()->getIntegerBitWidth() != VECTOR4) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int4_, false );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+
             } else {
                 LOG(FATAL) << "Unsupported";
             }
@@ -514,6 +531,12 @@ llvm::Value * LLVMCodeGen::CodeGen_(Store * stat) {
             } else if(vector_ == VECTOR16) { 
                 if( mask_value->getType()->getIntegerBitWidth() != VECTOR16) 
                     mask_value = build_ptr_->CreateIntCast( mask_value, t_int16_, (bool)0 );
+        
+                mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
+
+            } else if(vector_ == VECTOR4){
+                if( mask_value->getType()->getIntegerBitWidth() != VECTOR16) 
+                    mask_value = build_ptr_->CreateIntCast( mask_value, t_int4_, (bool)0 );
         
                 mask_value = build_ptr_->CreateBitCast( mask_value, t_bool_vec_ ); 
 
@@ -564,8 +587,8 @@ llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
         DataType base_data_type = stat_v1_type.get_data_type();
         int lanes = stat_v1_type.get_lanes();
         if( lanes == VECTOR8 && base_data_type == DOUBLE  ) {
-            llvm::Value * index8_vec = build_ptr_->CreateBitCast( index_value, t_int8_vec_ ); 
-            llvm::Value * index_vec = build_ptr_->CreateZExtOrBitCast( index8_vec, t_int64_vec_ );
+            //llvm::Value * index8_vec = build_ptr_->CreateBitCast( index_value, t_int8_vec_ ); 
+            llvm::Value * index_vec = build_ptr_->CreateZExtOrBitCast( index_value, t_int64_vec_ );
         
             std::vector<llvm::Value*> args;
             args.push_back(v1_value);
@@ -580,6 +603,22 @@ llvm::Value * LLVMCodeGen::CodeGen_(Shuffle * stat) {
             args.push_back(index_ext);
             llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_512_ ,args );
             res = shuffle_data;
+        } else if( lanes == VECTOR8 && base_data_type == FLOAT) {
+            llvm::Value * index_ext = build_ptr_->CreateZExtOrBitCast( index_value, t_int_vec_);
+            std::vector<llvm::Value*> args;
+            args.push_back(v1_value);
+            args.push_back(index_ext);
+            llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_float_256_ ,args );
+            res = shuffle_data;
+        } else if( lanes == VECTOR4 && base_data_type == DOUBLE ){
+            LOG(FATAL) << "Unsupported";
+/*            llvm::Value * index_ext = build_ptr_->CreateZExtOrBitCast( index_value, t_int64_vec_);
+
+            std::vector<llvm::Value*> args;
+            args.push_back(v1_value);
+            args.push_back(index_ext);
+            llvm::Value * shuffle_data = build_ptr_->CreateCall( permvar_double_256_ ,args );
+            res = shuffle_data;*/
         } else {
             LOG(FATAL) << "Unsupported";
         }

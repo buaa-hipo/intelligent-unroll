@@ -13,8 +13,8 @@
     #define GATHER_TYPE_NUM (VECTOR+1)
 //    #define LOG_VECTOR LOG_VECTOR8
 //    #define VEC_MASK 0xff  
-     
+    #define VEC_MASK_MAX (0xffff) 
     #define MASK char
-    #define VECTOR_MAX VECTOR16
-    #define LOG_VECTOR_MAX LOG_VECTOR16 
+    #define VECTOR_MAX (VECTOR16)
+    #define LOG_VECTOR_MAX (LOG_VECTOR16 )
 #endif

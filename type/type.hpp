@@ -1,7 +1,7 @@
 #ifndef TYPE_HPP
 #define TYPE_HPP
 #include "configure.hpp"
-typedef enum {FLOAT = 0, DOUBLE = 1, INT = 2, BOOL=3,INT8=4,PTR=5,INT64=6,VOID=7} DataType;
+typedef enum {FLOAT = 0, DOUBLE = 1, INT = 2, BOOL=3,INT8=4,PTR=5,INT64=6,VOID=7,INT4=8} DataType;
 #define NOT_VEC (1)
 #include <sstream>
 #include <string>
@@ -114,6 +114,8 @@ extern Type __bool ;
 extern Type __float ;
 extern Type __double;
 extern Type __int8;
+
+extern Type __int4;
 extern Type __int64;
  extern Type __double_ptr;
  extern Type __int_ptr ;
