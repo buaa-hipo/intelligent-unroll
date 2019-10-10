@@ -139,7 +139,14 @@ int main( int argc , char const * argv[] ) {
         #endif
 
     LOG(INFO) << data_num/vector_nums;
+
+    Timer::startTimer("compile");
     uint64_t func_int64 = compiler( spmv_str,name2ptr_map,data_num/vector_nums );
+
+    Timer::endTimer("compile");
+
+    Timer::printTimer("llvmcompile");
+    Timer::printTimer("compile");
     using FuncType = int(*)( double*,int*,int*,double*,double*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");

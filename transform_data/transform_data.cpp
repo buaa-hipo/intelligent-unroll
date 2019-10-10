@@ -300,7 +300,7 @@ public:
             }
             name_new_ptr_map_[ data_name ] = data_new;
         }
-        LOG(INFO) ;
+        //LOG(INFO) ;
             for( auto scatter_index : scatter_set_ ) {
                 auto scatter_info_it = scatter_map_.find( scatter_index );
                 CHECK(scatter_info_it != scatter_map_.end()) << "Can not find "<<scatter_index;
@@ -314,7 +314,7 @@ public:
                     gather_name_new_ptr_map_[scatter_index] = rearrange_scatter_data;
                 }
             }
-            LOG(INFO);
+            //LOG(INFO);
             for( auto gather_index : gather_set_ ) {
 
                 auto gather_info_it = gather_map_.find( gather_index );
@@ -363,7 +363,7 @@ void transform_data(
             table_column_num,
             vector
             );
-    LOG(INFO) << vector;
+    //LOG(INFO) << vector;
     transform_data.rearrange_all();
 }
 

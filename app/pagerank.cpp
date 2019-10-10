@@ -117,7 +117,14 @@ int main( int argc , char const * argv[] ) {
     LOG(INFO) << vector_nums;
 
     LOG(INFO) << nedges/vector_nums;
+
+    Timer::startTimer("compile");
     uint64_t func_int64 = compiler( pagerank_str,name2ptr_map,nedges/vector_nums );
+    Timer::endTimer("compile");
+
+    Timer::printTimer("llvmcompile");
+    Timer::printTimer("compile");
+
     using FuncType = int(*)( float*,int*,int*,float*,float*);
     FuncType func = (FuncType)(func_int64);
     Timer::startTimer("aot");

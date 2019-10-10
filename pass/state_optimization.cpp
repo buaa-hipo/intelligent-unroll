@@ -129,12 +129,12 @@ StateMent * OptimizationPass::pass_(Block * stat) {
 StateMent * OptimizationPass::pass_(Gather * stat) {
     const std::string & index_name = stat->index_name_;
     auto gather_map_it = gather_map_.find(index_name);
-    LOG(INFO) << index_name ;
+    ////LOG(INFO) << index_name ;
     if( gather_map_it != gather_map_.end() ) {
         const std::string & index_name = stat->index_name_;
 
         GatherInfo gather_info = (gather_map_it->second)[index_];
-        LOG(INFO) << gather_info;
+        //LOG(INFO) << gather_info;
         Varience * load_index;
 
         std::string addr_name = stat->addr_name_;
@@ -145,7 +145,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
 
         if( gather_info.order_type_ == DisOrder ) {
             int mask = gather_info.get_mask() & VEC_MASK_MAX;
-            LOG(INFO) << mask;
+            //LOG(INFO) << mask;
             if( mask == 1 || ( vector_ == VECTOR4 && mask != vector_ ) ) {
                 Varience * permulation_addr;
                 if( gather_scatter_has_load_info_index_.find(index_name) == gather_scatter_has_load_info_index_.end() ) {
@@ -246,7 +246,7 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                      
                     load_index = gather_scatter_has_load_info_index_[ index_name ];
                 }
-                LOG(INFO);
+                //LOG(INFO);
                 int mask = gather_info.get_mask() & VEC_MASK_MAX;
                 Bit2Addr bit2addr( vector_);
                 CompressAddr compress_addr = bit2addr.generate_compress( mask );
@@ -264,9 +264,9 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
                         CHECK(shuffle_index_vec_index>=0);
                         shuffle_index_vec[ shuffle_index_vec_i ] = shuffle_index_vec_index; 
                     }
-                    LOG(INFO) << mask;
+                    //LOG(INFO) << mask;
                     if( (mask & VEC_MASK_MAX) == ( 0xffffffff >> (32-vector_) )  ) {
-                        LOG(INFO) << load_data_state->get_type();
+                     //   LOG(INFO) << load_data_state->get_type();
                         gather_state_vec.push_back( load_data_state );
                     } else {
                         if(stat->get_type().get_data_type() == DOUBLE) {
@@ -316,7 +316,7 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
         std::string  index_name = stat->index_name_;
         const auto& reduction_map_it = reduction_map_.find( index_name);
          
-                LOG(INFO);
+                //LOG(INFO);
         if( reduction_map_it != reduction_map_.end() ) {
             StateMent * v1_state_new = pass( stat->get_v1());
             StateMent * v2_state_new = pass( stat->get_v2());
@@ -410,7 +410,7 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
                     Varience *shuffle_simd = new Varience( v2_state_new->get_type());
                     reduce_state_vec.push_back(LetStat::make( shuffle_simd, Shuffle::make( shuffle_res ,  permulation_addr)));                  
                     Varience * mask_var = new Varience( __bool_v );
-                    LOG(INFO);
+                  //  LOG(INFO);
                     reduce_state_vec.push_back( LetStat::make(mask_var, ICmpEQ::make( permulation_addr, vecnum_int8_v_const_ ) ) );
 
                     Varience * select_var = new Varience( v2_state_new->get_type());
@@ -450,8 +450,8 @@ StateMent * OptimizationPass::pass_(LetStat * stat) {
                 (*new_state_vec)[i] = (*state_vec)[i]; 
             } else {
                 res_var->set_type( state_inner->get_type()  );
-                LOG(INFO) << res_var;
-                LOG(INFO) << state_inner; 
+//                LOG(INFO) << res_var;
+//                LOG(INFO) << state_inner; 
                 (*new_state_vec)[i] = LetStat::make(res_var,state_inner);
             }
         }
@@ -675,7 +675,7 @@ StateMent * OptimizationInnerReducePass::pass_(Block * stat) {
     Varience * inner_for_num = new Varience(__int);
     
     StateMent * inner_for = For::make( new Const(0), new Const(1), inner_for_num,  CombinStatVec(inner_state_vec_new  ) );
-    LOG(INFO)  << inner_for;
+    //LOG(INFO)  << inner_for;
     std::vector<StateMent*> outer_vec;
     outer_vec.push_back( LetStat::make( inner_for_num, Load::make( range_num_var_ ) ) );
 
@@ -715,7 +715,7 @@ StateMent * optimization_state(
         StateMent * code_seed,
         const int vector
         ) {
-    LOG(INFO) << code_seed;
+    //LOG(INFO) << code_seed;
        std::vector<StateMent*> state_vec;
        for( const auto & it : same_feature_map ) {
             
@@ -767,7 +767,7 @@ StateMent * optimization_state(
        for( const auto & it : same_feature_range_map ) {
             const std::vector<std::pair<int,int>> & index_vec = it.second;
             const int index_vec_num = index_vec.size();
-            LOG(INFO) << index_vec_num;
+            //LOG(INFO) << index_vec_num;
             OptimizationInnerReducePass opt_reduce_pass = OptimizationInnerReducePass(
                 gather_map,
                 scatter_map,

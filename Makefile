@@ -1,6 +1,7 @@
 CC=g++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags` 
-ARCH=core-avx2
+#ARCH=core-avx2
+ARCH=knl
 INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/
 CFLAGS=-march=$(ARCH) -std=c++11 -O2 -ffast-math  -frtti -Wall -Werror
 

@@ -101,8 +101,8 @@ class Node2StateMent{
             
             Varience * name_varP_varVP_var= new Varience( type_scalar_ptr2vector_ptr(   arg_var_tmp->get_type()) , node_name);
 
-            LOG(INFO) << arg_var_tmp->get_type();
-            LOG(INFO) << type_scalar_ptr2ptr_vector(   arg_var_tmp->get_type());
+            //LOG(INFO) << arg_var_tmp->get_type();
+//            LOG(INFO) << type_scalar_ptr2ptr_vector(   arg_var_tmp->get_type());
             Varience * name_varP_varPV_var = new Varience( type_scalar_ptr2ptr_vector(   arg_var_tmp->get_type()), node_name );
 
             func_init_state_vec_.push_back( LetStat::make( name_varP_varVP_var ,BitCast::make( arg_var_tmp, name_varP_varVP_var->get_type() ) ));
@@ -160,7 +160,7 @@ class Node2StateMent{
         node_ptr->dec_need_node();
         auto node_it = _node2var_map.find(node_ptr); 
         Varience * node_var;
-        LOG(INFO) << node_ptr->node_name_ << " " << node_ptr->get_need_node();
+        //LOG(INFO) << node_ptr->node_name_ << " " << node_ptr->get_need_node();
         if(node_it == _node2var_map.end()) {
             node_var = new Varience(  node_ptr->get_type(), node_ptr->node_name_ );
             _node2var_map[ node_ptr ] = node_var;
@@ -181,7 +181,7 @@ class Node2StateMent{
        std::vector<StateMent*> seed_state_vec;
        while( !_cal_queue.empty() ) {
             Node * top_node_ptr = _cal_queue.front();
-            LOG(INFO)  << top_node_ptr->get_node_type();
+            //LOG(INFO)  << top_node_ptr->get_node_type();
             _cal_queue.pop();
             GatherNode * gather_node = dynamic_cast<GatherNode*>( top_node_ptr );
             if( gather_node != NULL )  {
@@ -270,7 +270,7 @@ class Node2StateMent{
             } else {
              DivNode * div_node = dynamic_cast< DivNode*>( top_node_ptr );
             if(div_node != NULL) {
-                LOG(INFO) <<"Div";
+                //LOG(INFO) <<"Div";
                  auto div_node_it = _node2var_map.find( div_node ); 
                 if( div_node_it == _node2var_map.end() ) {
                     LOG(FATAL) << "Can not find Varience";
@@ -378,8 +378,8 @@ void node_tree2state(
                 vector
                 );
         node2state.generate_func();
-        LOG(INFO) << "function generated";
+        //LOG(INFO) << "function generated";
         calculate_state = node2state.generate_code_seed(node_ptr);
-        LOG(INFO) << calculate_state;
-        LOG(INFO) << "code seed generated";
+//        LOG(INFO) << calculate_state;
+//        LOG(INFO) << "code seed generated";
 }

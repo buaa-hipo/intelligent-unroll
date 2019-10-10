@@ -131,7 +131,7 @@ Type type_scalar_ptr2ptr_vector( const Type type ) {
     return ret_type;
 }
 void Type::init_type(const int vector) {
-    LOG(INFO) << vector;
+    //LOG(INFO) << vector;
     if(vector == VECTOR8) {
          __double_v = __double_v8;
          __bool_v = __bool_v8;

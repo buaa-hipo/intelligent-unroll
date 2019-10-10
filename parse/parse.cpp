@@ -358,7 +358,7 @@ Node* ParseInputExpr(const std::string & expr) {
     } else if( current_token_type == Mult ){ 
         res_node_ptr = new MultNode( left_node_ptr,right_node_ptr );
     } else if( current_token_type == Div) {
-        LOG(INFO) << "Div";
+        //LOG(INFO) << "Div";
         res_node_ptr = new DivNode( left_node_ptr,right_node_ptr );
     } else {
         res_node_ptr = left_node_ptr; 
@@ -414,10 +414,10 @@ void ParseExpr(const std::string & expr) {
         } else if(equal_type == MultEquel) {
             LOG(FATAL)  << "Unsupported";
         }
-        LOG(INFO) << addr_ptr->node_name_ << " ";
+        //LOG(INFO) << addr_ptr->node_name_ << " ";
 
-        LOG(INFO) << index_node_ptr->node_name_ << " ";
-        LOG(INFO) << data_ptr->node_name_ << " ";
+        //LOG(INFO) << index_node_ptr->node_name_ << " ";
+        //LOG(INFO) << data_ptr->node_name_ << " ";
 
         root_node_ptr_ = new ScatterNode( addr_ptr, index_node_ptr, data_ptr );
 
