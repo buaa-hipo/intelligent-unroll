@@ -7,3 +7,12 @@ data/
 debug_log
 spmv
 pagerank
+cal_log/log_csr5
+cal_log/log_icc
+cal_log/log_mkl
+cal_log/log_our
+log_spmv_csr5
+log_spmv_mkl
+log_spmv_ourmethod
+log_spmv_ourmethod2
+results.csv
