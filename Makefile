@@ -13,7 +13,7 @@ LDFLAGS= -ffast-math  `llvm-config --cxxflags --ldflags --libs core executioneng
 LINK_DIR=build/ 
 
 all: spmv pagerank 
-LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_redirect_var.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o 
+LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_redirect_var.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o mmio.o 
 pagerank: $(LKFILE) pagerank.o
 	$(LD) $^ $(LDFLAGS) -o $@
 
@@ -53,6 +53,9 @@ statement_print.o:statement/statement_print.cpp
 	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
 csr_matrix.o:io_matrix/csr_matrix.cpp
 	$(CC) -c $(INCLUDE) $(CFLAGSPermitWarning) $< -o $@
+mmio.o:io_matrix/mmio.c
+	$(CC) -c $(INCLUDE) $(CFLAGSPermitWarning) $< -o $@
+
 Timers.o:Timer/Timers.cpp
 	$(CC) $< -c -o $@
 spmv.o: app/spmv.cpp 

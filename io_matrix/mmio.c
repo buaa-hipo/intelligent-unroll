@@ -8,7 +8,7 @@
 
 #ifndef MM_IO_H
 #define MM_IO_H
-
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -322,6 +322,7 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
     }while (line[0] == '%');
 
     /* line[] is either blank or has M,N, nz */
+    int i = 0;
     if (sscanf(line, "%d %d %d", M, N, nz) == 3)
         return 0;
 
@@ -329,7 +330,7 @@ int mm_read_mtx_crd_size(FILE *f, int *M, int *N, int *nz )
     do
     {
         num_items_read = fscanf(f, "%d %d %d", M, N, nz);
-        if (num_items_read == EOF) return MM_PREMATURE_EOF;
+        if (num_items_read == NULL || num_items_read == EOF) return MM_PREMATURE_EOF;
     }
     while (num_items_read != 3);
 
