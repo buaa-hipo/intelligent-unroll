@@ -179,6 +179,7 @@ ScatterInfo generate_scatter_info_elem(const int * index_ptr,const int vector_) 
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == DisOrder ) {
         scatter_info = generate_scatter_disorder_info_elem( index_ptr,vector_ );
+        scatter_info.order_type_ = order_type;
     } else {
         LOG(FATAL) << "Unsupported" << order_type; 
     }
@@ -198,6 +199,7 @@ GatherInfo generate_gather_info_elem(const int * index_ptr,const int vector_) {
         scatter_info.data_index_[0] = index_ptr[0];
     } else if( order_type == DisOrder ) {
         scatter_info = generate_gather_disorder_info_elem( index_ptr,vector_ );
+        scatter_info.order_type_ = order_type;
     } else {
         LOG(FATAL) << "Unsupported" << order_type; 
     }
@@ -268,6 +270,7 @@ ReductionInfo generate_reduction_info_elem(const int * index_ptr,const ScatterIn
          reduction_info = generate_reduction_disorder_info_elem( index_ptr,vector_ );
          reduction_info.order_type_ = scatter_info.order_type_;
     } else {
+        printf("ORDER: %d (must be one of [%d, %d, %d])\n", scatter_info.order_type_, IncContinue, OrderEquel, DisOrder); fflush(stdout);
         LOG(FATAL) << "Unsupported Now" << scatter_info ;
     }
     return reduction_info;
