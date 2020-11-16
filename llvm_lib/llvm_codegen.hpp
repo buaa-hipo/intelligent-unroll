@@ -123,12 +123,14 @@ class LLVMCodeGen {
             return std::move(mod_ptr_);
         else 
             LOG(FATAL) << "mod ptr is null";
+        return NULL;
     }
     std::unique_ptr<llvm::LLVMContext> get_ctx() {
         if( ctx_ptr_ ) 
             return std::move(ctx_ptr_);
         else 
             LOG(FATAL) << "ctx ptr is null";
+        return NULL;
     }
 
     template<typename T> 

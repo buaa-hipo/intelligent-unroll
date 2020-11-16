@@ -7,8 +7,12 @@
  */
 #include "Timers.hpp"
 #include "intelligent_unroll.hpp"
+//#include "dynvec.h"
 #include "util.h"
 #include "csr_matrix.h"
+
+#include "test_utils.h"
+
 #define PRINTINT(x) do {    \
                     printf( #x" %d\n" , (x));fflush(stdout); \
                         } while(0)
@@ -57,6 +61,40 @@ void print_vec( T * data_ptr, const int num ) {
     }
     std::cout<<std::endl;
 }
+
+using FuncType = int(*)( float*,int*,int*,float*,float*);
+
+const int max_bits_ = sizeof(float) * ByteSize;
+#ifdef __AVX512CD__
+    const int vector_bits = 512;
+
+    const int vector_nums = vector_bits / max_bits_;
+#else 
+    #ifdef __AVX2__
+    const int vector_bits = 256;
+
+    const int vector_nums = vector_bits / max_bits_;
+    #else
+    const int vector_nums = -1;
+    #error "Unsupported architetures";
+    #endif
+#endif
+
+inline void pagerank(float* sum, const int* n1, int* n2, float* rank, float* nneibor, int nedges) {
+    for(int j=0;j<nedges;j++) {
+        int nx = n1[j];
+        int ny = n2[j];
+        sum[ny] += rank[nx] / nneibor[nx];
+    }
+}
+
+inline void pagerank_dynvec(FuncType func, float* sum, int* n1, int* n2, float* rank, float* nneibor, int nedges) {
+    func( sum, n1,n2,rank,nneibor );
+    for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
+        sum[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
+    }
+}
+
 //#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
         if(argc <= 1 ) {
@@ -99,21 +137,21 @@ int main( int argc , char const * argv[] ) {
     name2ptr_map[ "rank" ] = rank;
     name2ptr_map[ "nneibor" ] = nneibor;
     name2ptr_map[ "sum" ] = sum;
-    const int max_bits_ = sizeof(float) * ByteSize;
-        #ifdef __AVX512CD__
-            const int vector_bits = 512;
+    // const int max_bits_ = sizeof(float) * ByteSize;
+    //     #ifdef __AVX512CD__
+    //         const int vector_bits = 512;
 
-            const int vector_nums = vector_bits / max_bits_;
-        #else 
-            #ifdef __AVX2__
-            const int vector_bits = 256;
+    //         const int vector_nums = vector_bits / max_bits_;
+    //     #else 
+    //         #ifdef __AVX2__
+    //         const int vector_bits = 256;
 
-            const int vector_nums = vector_bits / max_bits_;
-            #else
-            const int vector_nums = -1;
-            LOG(FATAL) << "Unsupported architetures";
-            #endif
-        #endif
+    //         const int vector_nums = vector_bits / max_bits_;
+    //         #else
+    //         const int vector_nums = -1;
+    //         LOG(FATAL) << "Unsupported architetures";
+    //         #endif
+    //     #endif
     LOG(INFO) << vector_nums;
 
     LOG(INFO) << nedges/vector_nums;
@@ -125,45 +163,59 @@ int main( int argc , char const * argv[] ) {
     Timer::printTimer("llvmcompile");
     Timer::printTimer("compile");
 
-    using FuncType = int(*)( float*,int*,int*,float*,float*);
-    FuncType func = (FuncType)(func_int64);
-    Timer::startTimer("aot");
-    for(int j=0;j<nedges;j++) {
-        int nx = n1[j];
-        int ny = n2[j];
-        sum_bak[ny] += rank[nx] / nneibor[nx];
-    }
+    // using FuncType = int(*)( float*,int*,int*,float*,float*);
+    // FuncType func = (FuncType)(func_int64);
+    // Timer::startTimer("aot");
+    // for(int j=0;j<nedges;j++) {
+    //     int nx = n1[j];
+    //     int ny = n2[j];
+    //     sum_bak[ny] += rank[nx] / nneibor[nx];
+    // }
 
-    Timer::endTimer("aot");
+    // Timer::endTimer("aot");
 
-    Timer::printTimer("aot");
+    // Timer::printTimer("aot");
+
+    papi_init();
+
+    int flops = nedges * 2;
+    std::string base_name(argv[1]);
+    std::string aot_name = base_name + std::string(".aot");
+    pagerank(sum_bak, n1, n2, rank, nneibor, nedges);
+    PAPI_TEST_EVAL(50, 1000, flops, aot_name.c_str(), pagerank(sum_time, n1, n2, rank, nneibor, nedges) );
+
+    std::string jit_name = base_name + std::string(".jit");
+    pagerank_dynvec((FuncType)func_int64, sum, n1, n2, rank, nneibor, nedges);
+    PAPI_TEST_EVAL(50, 1000, flops, jit_name.c_str(), pagerank_dynvec((FuncType)func_int64, sum_time, n1, n2, rank, nneibor, nedges) );
+
+    papi_fini();
     
-    func( sum, n1,n2,rank,nneibor );
-    LOG(INFO) << nedges / vector_nums * vector_nums;
-    for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
-        sum[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
-    }
+//     func( sum, n1,n2,rank,nneibor );
+//     LOG(INFO) << nedges / vector_nums * vector_nums;
+//     for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
+//         sum[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
+//     }
 
-#define WORM_TIMES 50
-     for( int i = 0 ; i < WORM_TIMES ; i++ ) {
-        func( sum_time, n1,n2,rank,nneibor );
-        for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
-            sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
-        }
-     }
+// #define WORM_TIMES 50
+//      for( int i = 0 ; i < WORM_TIMES ; i++ ) {
+//         func( sum_time, n1,n2,rank,nneibor );
+//         for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
+//             sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
+//         }
+//      }
 
-#define TIMES 1000
-    Timer::startTimer("jit");
-     for( int i = 0 ; i < TIMES ; i++ ){
-        func( sum_time, n1,n2,rank,nneibor );
-        for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
-            sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
-        }
-     }
+// #define TIMES 1000
+//     Timer::startTimer("jit");
+//      for( int i = 0 ; i < TIMES ; i++ ){
+//         func( sum_time, n1,n2,rank,nneibor );
+//         for( int i = (nedges / vector_nums * vector_nums) ; i < nedges ; i++ ) {
+//             sum_time[ n2[ i ] ] += rank[n1[i]] / nneibor[n1[i]];
+//         }
+//      }
 
-    Timer::endTimer("jit");
-    Timer::printTimer("jit",TIMES);
-    Timer::printGFLOPS( "jit", nedges * 2 , TIMES );
+//     Timer::endTimer("jit");
+//     Timer::printTimer("jit",TIMES);
+//     Timer::printGFLOPS( "jit", nedges * 2 , TIMES );
     if(!check_equal( sum_bak, sum, nnodes )) {
         return 1;
     }

@@ -44,23 +44,23 @@
             return t_float_ptr_;
         } else if( type == __float_ptr_v ) {
             return t_float_ptr_vec_;
-        } else if( type == __int8 ) { 
+        } else if( type == __dynvec_int8 ) { 
             return t_int8_;
-        } else if( type == __int8_ptr ) {
+        } else if( type == __dynvec_int8_ptr ) {
             return t_int8_ptr_;
-        } else if(type == __int8_v) {
+        } else if(type == __dynvec_int8_v) {
             return t_int8_vec_;
-        } else if( type == __int8_v_ptr ) { 
+        } else if( type == __dynvec_int8_v_ptr ) { 
             return t_int8_vec_ptr_;
-        } else if( type == __int64 ) { 
+        } else if( type == __dynvec_int64 ) { 
             return t_int64_;
-        } else if( type == __int64_ptr ) {
+        } else if( type == __dynvec_int64_ptr ) {
             return t_int64_p_;
-        } else if( type == __int64_ptr_ptr ) {
+        } else if( type == __dynvec_int64_ptr_ptr ) {
             return t_int64_p_p_;
-        } else if(type == __int64_v) {
+        } else if(type == __dynvec_int64_v) {
             return t_int64_vec_;
-        } else if( type == __int64_v_ptr ) { 
+        } else if( type == __dynvec_int64_v_ptr ) { 
             return t_int64_vec_p_;
         } else if( type == __int_dv_ptr ) {
             return t_int_dvec_p_;
@@ -195,7 +195,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
         if( type == __int ) {
         
             LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(),build_ptr_.get(), value );
-        } else if (type == __int64) {
+        } else if (type == __dynvec_int64) {
             
             LLVMPrintInt64( mod_ptr_.get(), ctx_ptr_.get(),build_ptr_.get(), value );
         } else if( type == __int_ptr ) {
@@ -217,7 +217,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(Print * stat) {
                 llvm::Value * value_tmp = build_ptr_->CreateExtractElement( value, i);
                 LLVMPrintInt( mod_ptr_.get(), ctx_ptr_.get(), build_ptr_.get(), value_tmp);
             }
-        } else if( type == __int8_v ) {
+        } else if( type == __dynvec_int8_v ) {
             for( int i = 0 ; i < vector_; i++ ) {
                 llvm::Value * value_tmp_int8 = build_ptr_->CreateExtractElement( value, i);
                 llvm::Value * value_tmp_int = build_ptr_->CreateZExtOrBitCast( value_tmp_int8 , t_int_ );
@@ -677,7 +677,7 @@ llvm::Value * LLVMCodeGen::CodeGen_(BitCast * stat) {
         const Type & stat_type = stat->get_type();
         if( (v1_type == __int && (stat_type == __double|| stat_type == __float )) ||(( v1_type == __int_v ) && ( stat_type == __double_v || stat_type == __float_v ) ) ) {
             return build_ptr_->CreateSIToFP(v1_value, llvmtype);
-        } else if( v1_type == __int64 &&( stat_type == __int_ptr || stat_type == __double_ptr || stat_type == __float_ptr ) ){
+        } else if( v1_type == __dynvec_int64 &&( stat_type == __int_ptr || stat_type == __double_ptr || stat_type == __float_ptr ) ){
             return build_ptr_->CreateIntToPtr( v1_value, llvmtype);
         } else {
             return build_ptr_->CreateBitCast(v1_value, llvmtype);
