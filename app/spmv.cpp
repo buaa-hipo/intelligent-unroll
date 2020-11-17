@@ -102,6 +102,10 @@ int main( int argc , char const * argv[] ) {
             return 0;
         }
         csrSparseMatrixPtr sparseMatrixPtr = matrix_read_csr( argv[1]);
+        if(sparseMatrixPtr==NULL) {
+            printf("Error: sparse matrix not supported\n");
+            return 0;
+        }
     #endif
   
     
@@ -175,6 +179,8 @@ int main( int argc , char const * argv[] ) {
 
     int flops = data_num * 2;
     std::string base_name(argv[1]);
+    std::vector<std::string> path = splitpath(base_name);
+    base_name = remove_extension(path.back());
     std::string aot_name = base_name + std::string(".aot");
     spmv_local( y_array_bak, x_array,data_ptr,column_ptr,row_ptr,row_num );
     PAPI_TEST_EVAL(50, 1000, flops, aot_name.c_str(), spmv_local( y_array_time, x_array,data_ptr,column_ptr,row_ptr,row_num ) );

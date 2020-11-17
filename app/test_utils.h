@@ -17,7 +17,10 @@ double* __PAPI_SLICE = NULL;
 std::vector<std::string> event_names;
 int* __PAPI_EVENT_SETS= NULL;
 
-#define PAPI_PMU_MAX_NUM 4
+int PAPI_PMU_MAX_NUM;
+#define MAX_PMU_NUM 10
+
+// #define PAPI_PMU_MAX_NUM 4
 #define SAFE_FREE(ptr) do { \
     if(ptr) { free(ptr); ptr=NULL; } \
 } while(0)
@@ -38,6 +41,7 @@ void papi_init() {
     // split all available papi events into several subsets
     std::vector<int> event_codes;
     int event = 0 | PAPI_PRESET_MASK;
+    int num = PAPI_get_opt( PAPI_MAX_HWCTRS, NULL );
     CHECK_PAPI_VALID(PAPI_enum_event( &event, PAPI_ENUM_FIRST ), PAPI_OK);
     PAPI_event_info_t info;
     do {
@@ -50,13 +54,32 @@ void papi_init() {
     } while (PAPI_enum_event(&event, PAPI_PRESET_ENUM_AVAIL) == PAPI_OK);
     __PAPI_AVAIL_NUM = event_codes.size();
     assert(__PAPI_AVAIL_NUM>0);
+
+    int i;
+    int EventSet = PAPI_NULL;
+    CHECK_PAPI_VALID( PAPI_create_eventset(&EventSet), PAPI_OK );
+    for(i=0;i<num && i<__PAPI_AVAIL_NUM;++i) {
+        int retval = PAPI_add_event(EventSet, event_codes[i]);
+        if(retval!=PAPI_OK) {
+            break;
+        }
+    }
+    PAPI_PMU_MAX_NUM = i;
+
     __PAPI_SLICE_NUM = (__PAPI_AVAIL_NUM+PAPI_PMU_MAX_NUM-1) / PAPI_PMU_MAX_NUM;
     __PAPI_SLICE = (double*)malloc(sizeof(double)*__PAPI_SLICE_NUM*PAPI_PMU_MAX_NUM);
     __PAPI_EVENT_SETS = (int*)malloc(sizeof(int)*__PAPI_SLICE_NUM);
     assert(__PAPI_SLICE != NULL);
     assert(__PAPI_EVENT_SETS != NULL);
-    for(int i=0; i<__PAPI_SLICE_NUM; ++i) {
-        // printf("Creating %d event sets...\n", i);
+
+    __PAPI_SLICE[0] = 0.0;
+    __PAPI_EVENT_SETS[0] = EventSet;
+
+    printf("Available number of hardware counters: %d\n", PAPI_PMU_MAX_NUM);
+    printf("PAPI Avail Event Num = %d\n", __PAPI_AVAIL_NUM);
+    printf("Number of tests need for collecting all PAPI counter values: %d\n", __PAPI_SLICE_NUM);
+
+    for(i=1; i<__PAPI_SLICE_NUM; ++i) {
         __PAPI_EVENT_SETS[i] = PAPI_NULL;
         CHECK_PAPI_VALID( PAPI_create_eventset(__PAPI_EVENT_SETS+i), PAPI_OK );
         for(int k=0; k<PAPI_PMU_MAX_NUM; ++k) {
@@ -67,8 +90,6 @@ void papi_init() {
             __PAPI_SLICE[idx] = 0.0;
         }
     }
-    printf("PAPI Avail Event Num = %d\n", __PAPI_AVAIL_NUM);
-    printf("Number of tests need for collecting all PAPI counter values: %d\n", __PAPI_SLICE_NUM);
 }
 
 void papi_fini() {
@@ -86,7 +107,7 @@ void test_begin(int i) {
 }
 
 void test_end(int i, int scale) {
-    long long int value[PAPI_PMU_MAX_NUM] = {0};
+    long long int value[MAX_PMU_NUM] = {0};
     CHECK_PAPI_VALID(PAPI_stop( __PAPI_EVENT_SETS[i], value ), PAPI_OK);
     double* cur_papi_slice = __PAPI_SLICE + i*PAPI_PMU_MAX_NUM;
     for(int k=0; k<PAPI_PMU_MAX_NUM; ++k) {
@@ -109,6 +130,36 @@ void test_output(const char* name) {
 
     fclose(fp);
 }
+
+std::string remove_extension(const std::string& filename) {
+    size_t lastdot = filename.find_last_of(".");
+    if (lastdot == std::string::npos) return filename;
+    return filename.substr(0, lastdot); 
+}
+
+std::vector<std::string> splitpath(
+  const std::string& str
+  , const std::set<char> delimiters=std::set<char>({'/'})) {
+    std::vector<std::string> result;
+    char const* pch = str.c_str();
+    char const* start = pch;
+    for(; *pch; ++pch) {
+        if (delimiters.find(*pch) != delimiters.end()) {
+            if (start != pch) {
+                std::string str(start, pch);
+                result.push_back(str);
+            }
+            else {
+                result.push_back("");
+            }
+            start = pch + 1;
+        }
+    }
+    result.push_back(start);
+    return result;
+}
+
+
 
 #define PAPI_TEST_EVAL(WARM_TIMES, EVAL_TIMES, flops, name, stat) do {\
     for(int i=0;i<WARM_TIMES;++i) { stat; }\

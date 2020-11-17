@@ -180,6 +180,8 @@ int main( int argc , char const * argv[] ) {
 
     int flops = nedges * 2;
     std::string base_name(argv[1]);
+    std::vector<std::string> path = splitpath(base_name);
+    base_name = remove_extension(path.back());
     std::string aot_name = base_name + std::string(".aot");
     pagerank(sum_bak, n1, n2, rank, nneibor, nedges);
     PAPI_TEST_EVAL(50, 1000, flops, aot_name.c_str(), pagerank(sum_time, n1, n2, rank, nneibor, nedges) );
