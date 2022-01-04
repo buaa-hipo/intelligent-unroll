@@ -1,8 +1,8 @@
 # Prerequiement
 - install llvm 8.0.0
--- Please follow instructions in https://github.com/Changxi-Liu/llvm-8.0.0
++ Please follow instructions in https://github.com/Changxi-Liu/llvm-8.0.0
 
-- add llvm install path into PATH env variable
+- add llvm install path ${LLVM_PROJ}/install/bin into PATH env variable
 
 - modify Makefile LLVM_BASE to your llvm8.0.0 install path
 
