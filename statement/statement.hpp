@@ -336,13 +336,13 @@ class Const : public Expr{
         } else if( typeid(T) == typeid(bool) ) {
             type_ = __bool;
         } else if( typeid(uint64_t) == typeid(T) ){
-            type_ = __int64;
+            type_ = __dynvec_int64;
         } else if( typeid(float) == typeid(T) ){
             type_ = __float;
         } else if( typeid(int8_t) == typeid(T) ) {
-            type_ = __int8;
+            type_ = __dynvec_int8;
         } else if( typeid(char) == typeid(T) ){
-            type_ = __int8;
+            type_ = __dynvec_int8;
         } else {
             LOG(FATAL) << "Unsupport Type"  ;
         }

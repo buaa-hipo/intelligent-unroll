@@ -27,5 +27,6 @@
 #include "node2state.hpp"
 
 
-uint64_t compiler( const std::string & expr_str,  std::map<std::string,void*> & name2ptr_map  ,int table_column_num) ;
+// uint64_t compiler( const std::string & expr_str,  std::map<std::string,void*> & name2ptr_map  ,int table_column_num) ;
+#include "dynvec.h"
 #endif

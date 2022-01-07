@@ -157,15 +157,15 @@ StateMent * OptimizationPass::pass_(Gather * stat) {
 //                    gather_state_vec.push_back( Print::make( load_index ) );
                     //warning 
                     //
-                    permulation_addr = new Varience( __int8_v );
+                    permulation_addr = new Varience( __dynvec_int8_v );
 
                     if(vector_ == VECTOR8) {
 
-                        gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __int8_v_ptr )) ));
+                        gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __dynvec_int8_v_ptr )) ));
                         gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(2) ) ));
                     } else if(vector_ == VECTOR16){
 
-                        gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __int8_v_ptr )) ));
+                        gather_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( gather_info_var, __dynvec_int8_v_ptr )) ));
                         gather_state_vec.push_back( LetStat::make( gather_info_var , IncAddr::make( gather_info_var, new Const(4) ) ));
                     } else if (vector_ == VECTOR4){
                            
@@ -391,8 +391,8 @@ StateMent * OptimizationPass::pass_(Add * stat ) {
 
                 for( int reduce_i = 0 ; reduce_i < reduce_num ; reduce_i++ ) {
                     Varience * permulation_addr;
-                    permulation_addr = new Varience( __int8_v );
-                    reduce_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( reduction_info_var, __int8_v_ptr )) ));
+                    permulation_addr = new Varience( __dynvec_int8_v );
+                    reduce_state_vec.push_back( LetStat::make( permulation_addr , Load::make(BitCast::make( reduction_info_var, __dynvec_int8_v_ptr )) ));
 
                     if(vector_ == VECTOR8) {
                         reduce_state_vec.push_back( LetStat::make( reduction_info_var , IncAddr::make( reduction_info_var, new Const(2) ) ));

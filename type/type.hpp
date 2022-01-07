@@ -113,42 +113,42 @@ extern Type __int ;
 extern Type __bool ;
 extern Type __float ;
 extern Type __double;
-extern Type __int8;
+extern Type __dynvec_int8;
 
 extern Type __int4;
-extern Type __int64;
- extern Type __double_ptr;
- extern Type __int_ptr ;
- extern Type __int64_ptr;
+extern Type __dynvec_int64;
+extern Type __double_ptr;
+extern Type __int_ptr ;
+extern Type __dynvec_int64_ptr;
 
- extern Type __double_ptr_ptr ;
- extern Type __int_ptr_ptr ;
- extern Type __int64_ptr_ptr;
- extern Type __float_ptr ;
- extern Type __int8_ptr;
-
-
- extern Type __float_v;
- extern Type __float_v_ptr;
- extern Type __double_ptr_v ;
-
- extern Type __double_v;
- extern Type __bool_v ;
- extern Type __int_v ;
- extern Type __int64_v ;
-
- extern Type __int_dv ;
- extern Type __int8_v;
+extern Type __double_ptr_ptr ;
+extern Type __int_ptr_ptr ;
+extern Type __dynvec_int64_ptr_ptr;
+extern Type __float_ptr ;
+extern Type __dynvec_int8_ptr;
 
 
- extern Type __double_v_ptr;
- extern Type __int_v_ptr;
- extern Type __int_dv_ptr;
- extern Type __float_ptr_v ;
- extern Type __int8_v_ptr;
+extern Type __float_v;
+extern Type __float_v_ptr;
+extern Type __double_ptr_v ;
 
- extern Type __int64_v_ptr;
- extern Type __int_ptr_v;
+extern Type __double_v;
+extern Type __bool_v ;
+extern Type __int_v ;
+extern Type __dynvec_int64_v ;
+
+extern Type __int_dv ;
+extern Type __dynvec_int8_v;
+
+
+extern Type __double_v_ptr;
+extern Type __int_v_ptr;
+extern Type __int_dv_ptr;
+extern Type __float_ptr_v ;
+extern Type __dynvec_int8_v_ptr;
+
+extern Type __dynvec_int64_v_ptr;
+extern Type __int_ptr_v;
 
 Type type_scalar_ptr2vector_ptr( const Type type ) ;
 Type type_scalar_ptr2ptr_vector( const Type type );
