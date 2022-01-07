@@ -1,21 +1,21 @@
-# CC=g++
-CC=icpc
+#CC=g++
+CC=clang++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags` 
-# ARCH=core-avx2
-# ARCH=knl
-INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/ -I./include/ -I./
-# CFLAGS=-march=$(ARCH) -std=c++11 -O2 -ffast-math  -frtti -Wall -Werror
-
-# CFLAGSPermitWarning=-std=c++11 -O2 -ffast-math  -frtti -Wall 
-
-CFLAGS=-xHost -std=c++11 -O3 -ffast-math  -frtti -Wall -Werror
-CFLAGSPermitWarning=-std=c++11 -xHost -O3 -ffast-math  -frtti -Wall 
+ARCH=core-avx2
+#ARCH=knl
+#LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-project-llvmorg-8.0.1/install/
+#LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-8.0.0.src/install/
+LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-project/install/
+LLVM_INCLUDE=${LLVM_BASE}/include/
+LLVM_LIB=${LLVM_BASE}/lib/
+INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/ -I./ -I${LLVM_INCLUDE}
+CFLAGS=-march=$(ARCH) -std=c++11 -O2 -ffast-math  -frtti -Wall 
+#-Werror
 
 INCLUDE_LLVM_DIR=`llvm-config --cxxflags` 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
-#LD=g++ 
-LD=icpc
-LDFLAGS= -lpapi -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11
+LD=g++ 
+LDFLAGS= -L${LLVM_LIB} -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine  mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11 
 LINK_DIR=build/ 
 
 AR=ar
@@ -26,10 +26,10 @@ libdynvec: $(LKFILE)
 	$(AR) -rvs libdynvec.a $^
 
 pagerank: $(LKFILE) pagerank.o
-	$(LD) $^ $(LDFLAGS) -o $@
+	$(LD) $^ $(LDFLAGS)  -o $@
 
 spmv: $(LKFILE) spmv.o
-	$(LD) $^ $(LDFLAGS) -o $@
+	$(LD)  $^ $(LDFLAGS)  -o $@
 parse.o:parse/parse.cpp node/node.hpp
 	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
 tools_set.o:tools_set/tools_set.cpp
