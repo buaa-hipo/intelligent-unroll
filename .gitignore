@@ -16,3 +16,4 @@ log_spmv_mkl
 log_spmv_ourmethod
 log_spmv_ourmethod2
 results.csv
+libdynvec.a

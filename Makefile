@@ -2,20 +2,20 @@
 CC=clang++
 #CFLAGS=-O3 -ffast-math `llvm-config --cflags` 
 ARCH=core-avx2
+PAPI_ROOT=/home/yx/install/papi-6.0.0
 #ARCH=knl
-#LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-project-llvmorg-8.0.1/install/
-#LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-8.0.0.src/install/
-LLVM_BASE=/home/lcx/llvm_pagerank_dependency/llvm-project/install/
+LLVM_BASE=/home/yx/dynvec-evaluation/llvm-8.0.0/install/
 LLVM_INCLUDE=${LLVM_BASE}/include/
 LLVM_LIB=${LLVM_BASE}/lib/
-INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/ -I./ -I${LLVM_INCLUDE}
-CFLAGS=-march=$(ARCH) -std=c++11 -O2 -ffast-math  -frtti -Wall 
+INCLUDE=-Iparse/ -Inode/ -Ilog/ -Itype/ -Ihash/ -Itools_set/ -Istatement/ -Ipass/ -Ibit2addr/ -Iutil/ -Iio_matrix/ -ITimer/ -Itransform_data/ -Iintelligent_unroll/ -Iinclude/ -I./ -I${LLVM_INCLUDE} -I$(PAPI_ROOT)/include
+CFLAGS=-march=$(ARCH) -std=c++11 -O3 -ffast-math  -frtti -Wall  -fPIC
+CFLAGSPermitWarning=$(CFLAGS)
 #-Werror
 
 INCLUDE_LLVM_DIR=`llvm-config --cxxflags` 
 #CFLAGS=-g -ffast-math `llvm-config --cflags`
 LD=g++ 
-LDFLAGS= -L${LLVM_LIB} -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine  mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11 
+LDFLAGS= -L${LLVM_LIB} -ffast-math  `llvm-config --cxxflags --ldflags --libs core executionengine  mcjit interpreter analysis native bitwriter --system-libs`   -rdynamic -llzma -std=c++11 -L$(PAPI_ROOT)/lib -lpapi
 LINK_DIR=build/ 
 
 AR=ar
@@ -23,7 +23,7 @@ AR=ar
 all: libdynvec spmv pagerank
 LKFILE= type.o parse.o tools_set.o transform_data.o node2state.o pass.o state_formulation.o state_redirect_var.o state_optimization.o intelligent_unroll.o llvm_common.o util.o llvm_codegen.o statement.o statement_print.o csr_matrix.o bit2addr.o tools_set.o Timers.o mmio.o 
 libdynvec: $(LKFILE)
-	$(AR) -rvs libdynvec.a $^
+	$(AR) -rcvs libdynvec.a $^
 
 pagerank: $(LKFILE) pagerank.o
 	$(LD) $^ $(LDFLAGS)  -o $@
@@ -68,7 +68,7 @@ mmio.o:io_matrix/mmio.c
 	$(CC) -c $(INCLUDE) $(CFLAGSPermitWarning) $< -o $@
 
 Timers.o:Timer/Timers.cpp
-	$(CC) $< -c -o $@
+	$(CC) $(INCLUDE) $(CFLAGSPermitWarning) $< -c -o $@
 spmv.o: app/spmv.cpp 
 	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
 pagerank.o: app/pagerank.cpp 
