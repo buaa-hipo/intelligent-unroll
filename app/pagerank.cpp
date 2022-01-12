@@ -42,7 +42,7 @@ template<typename T>
 bool check_equal(const T * v1, const T * v2, const int num ) {
     bool flag = true;
     for( int i = 0 ; i < num ; i++ ) {
-        if( (v1[i]-v2[i]) > 1e-3 || (v2[i]-v1[i]) > 1e-3 ) {
+        if( (v1[i]-v2[i])/v1[i] > 1e-3 || (v2[i]-v1[i])/v1[i] > 1e-3 ) {
             flag = false;
            std::cout<< i<< " "  << v1[i]  << " "<< v2[i]<<"\n";
         }
