@@ -97,6 +97,10 @@ inline void pagerank_dynvec(FuncType func, float* sum, int* n1, int* n2, float* 
 
 //#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
+     bool with_papi = false;
+     if(argc >= 3) {
+        with_papi = (atoi(argv[2])!=0);
+     }
         if(argc <= 1 ) {
             printf("Erro: You need to modify a file to read\n");
             return 0;
@@ -176,7 +180,11 @@ int main( int argc , char const * argv[] ) {
 
     // Timer::printTimer("aot");
 
-    papi_init();
+    if(with_papi) {
+       papi_init();
+    } else {
+       printf("PAPI profiling is disabled.\n");
+    }
 
     int flops = nedges * 2;
     std::string base_name(argv[1]);
@@ -190,7 +198,9 @@ int main( int argc , char const * argv[] ) {
     pagerank_dynvec((FuncType)func_int64, sum, n1, n2, rank, nneibor, nedges);
     PAPI_TEST_EVAL(50, 1000, flops, jit_name.c_str(), pagerank_dynvec((FuncType)func_int64, sum_time, n1, n2, rank, nneibor, nedges) );
 
-    papi_fini();
+    if(with_papi) {
+       papi_fini();
+    }
     
 //     func( sum, n1,n2,rank,nneibor );
 //     LOG(INFO) << nedges / vector_nums * vector_nums;

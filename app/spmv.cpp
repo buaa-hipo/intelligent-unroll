@@ -89,6 +89,10 @@ void spmv_dynvec(FuncType func, double* y_array, int* row_ptr_all, int* column_p
 
 //#define LITTEL_CASE2
 int main( int argc , char const * argv[] ) {
+    bool with_papi = false;
+    if(argc >= 3) {
+        with_papi = (atoi(argv[2])!=0);
+    }
     #ifdef LITTEL_CASE
         csrSparseMatrix sparseMatrix = little_test();
         csrSparseMatrixPtr  sparseMatrixPtr = &sparseMatrix;
@@ -175,7 +179,12 @@ int main( int argc , char const * argv[] ) {
 
     // Timer::printTimer("aot");
 
-    papi_init();
+    if(with_papi) {
+       papi_init();
+    } else {
+       printf("PAPI profiling is disabled.\n");
+    }
+
 
     int flops = data_num * 2;
     std::string base_name(argv[1]);
@@ -189,7 +198,9 @@ int main( int argc , char const * argv[] ) {
     spmv_dynvec((FuncType)func_int64, y_array, row_ptr_all, column_ptr, x_array, data_ptr, data_num);
     PAPI_TEST_EVAL(50, 1000, flops, jit_name.c_str(), spmv_dynvec((FuncType)func_int64, y_array_time, row_ptr_all, column_ptr, x_array, data_ptr, data_num) );
 
-    papi_fini();
+    if(with_papi) {
+        papi_fini();
+    }
 
     
 //     func( y_array,row_ptr_all, column_ptr, x_array,data_ptr );
