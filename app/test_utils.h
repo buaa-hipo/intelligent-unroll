@@ -44,6 +44,7 @@ void papi_init() {
     std::vector<int> event_codes;
     int event = 0 | PAPI_PRESET_MASK;
     int num = PAPI_get_opt( PAPI_MAX_HWCTRS, NULL );
+    if(num>4) num=4
     CHECK_PAPI_VALID(PAPI_enum_event( &event, PAPI_ENUM_FIRST ), PAPI_OK);
     PAPI_event_info_t info;
     do {
